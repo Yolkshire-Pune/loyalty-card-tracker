@@ -45,15 +45,30 @@
         const urlParams = new URLSearchParams(window.location.search);
         const cardId = urlParams.get('id');
 
+        // --- THE CORS KILLER (JSONP) ---
+        function requestData(params) {
+            return new Promise((resolve) => {
+                const callbackName = 'callback_' + Math.round(Math.random() * 1000000);
+                window[callbackName] = function(data) {
+                    delete window[callbackName];
+                    const scriptTag = document.getElementById(callbackName);
+                    if (scriptTag) document.body.removeChild(scriptTag);
+                    resolve(data);
+                };
+                const script = document.createElement('script');
+                script.id = callbackName;
+                script.src = `${API_URL}?${params}&callback=${callbackName}`;
+                document.body.appendChild(script);
+            });
+        }
+
         async function init() {
             if (!cardId) {
                 showError("Invalid QR Code. Please scan a valid Yolkshire card.");
                 return;
             }
             try {
-                const res = await fetch(`${API_URL}?id=${cardId}`);
-                const data = await res.json();
-                
+                const data = await requestData(`id=${cardId}`);
                 if (data.error) {
                     showError(data.error);
                 } else {
@@ -85,7 +100,6 @@
                 container.innerHTML = `
                     <h2 class="text-2xl font-black text-yolkGreen mb-2">Activate Your Card</h2>
                     <p class="text-gray-400 mb-10 text-[10px] uppercase tracking-[0.2em] font-black">Golden Yolk Loyalty</p>
-                    
                     <div class="space-y-4">
                         <input type="text" id="regName" placeholder="Full Name" class="w-full h-16 border-2 border-gray-100 rounded-2xl px-6 text-lg font-bold focus:border-yolkGreen outline-none transition-all">
                         <input type="tel" id="regPhone" placeholder="10-Digit Phone" class="w-full h-16 border-2 border-gray-100 rounded-2xl px-6 text-lg font-bold focus:border-yolkGreen outline-none transition-all">
@@ -101,11 +115,9 @@
                 container.innerHTML = `
                     <p class="text-[10px] uppercase tracking-[0.25em] text-yolkGreen font-black mb-1">Golden Yolk Member</p>
                     <h2 class="text-3xl font-black text-gray-800 mb-10 tracking-tight">Hi, ${data.name.split(' ')[0]}!</h2>
-                    
                     <div class="relative w-full bg-gray-100 h-6 rounded-full mb-6 p-1.5 shadow-inner">
                         <div class="progress-transition bg-yolkGreen h-full rounded-full" style="width: 0%"></div>
                     </div>
-                    
                     <div class="flex justify-between items-end mb-12 px-2">
                         <div class="text-left">
                             <span class="text-7xl font-black text-yolkGreen leading-none">${visits}</span>
@@ -116,7 +128,6 @@
                              <p class="text-sm font-black text-gray-700">${data.lastVisit ? new Date(data.lastVisit).toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'}) : 'Join Date'}</p>
                         </div>
                     </div>
-
                     ${isReward ? `
                         <div class="bg-yolkGold bg-opacity-10 border-2 border-yolkGold rounded-2xl p-5 mb-10">
                             <p class="text-yolkGreen font-black flex items-center justify-center gap-2">
@@ -124,16 +135,15 @@
                             </p>
                         </div>
                     ` : ''}
-
                     <div class="bg-yolkBg rounded-[2rem] p-8 border border-gray-100">
                         <label class="block text-[10px] font-black text-gray-400 mb-4 uppercase tracking-[0.2em]">Staff Authorization</label>
                         <input type="tel" id="staffPin" placeholder="••••" class="w-full h-16 bg-white border-2 border-gray-200 rounded-2xl mb-5 text-center text-4xl tracking-[1.5rem] font-black focus:border-yolkGreen outline-none transition-all placeholder:tracking-normal placeholder:text-gray-200">
                         <button onclick="markVisit()" id="visitBtn" class="w-full h-16 bg-yolkGreen text-white rounded-2xl font-black text-xl shadow-xl active:scale-95 transition-transform uppercase tracking-widest">Collect Stamp</button>
                     </div>
                 `;
-                
                 setTimeout(() => {
-                    document.querySelector('.progress-transition').style.width = progress + '%';
+                    const bar = document.querySelector('.progress-transition');
+                    if (bar) bar.style.width = progress + '%';
                 }, 200);
             }
         }
@@ -146,7 +156,7 @@
 
             btn.disabled = true;
             btn.innerHTML = "Processing...";
-            await fetch(`${API_URL}?id=${cardId}&action=register&name=${encodeURIComponent(name)}&phone=${encodeURIComponent(phone)}`);
+            await requestData(`id=${cardId}&action=register&name=${encodeURIComponent(name)}&phone=${encodeURIComponent(phone)}`);
             location.reload();
         }
 
@@ -159,8 +169,7 @@
             btn.innerHTML = "Verifying...";
             
             try {
-                const res = await fetch(`${API_URL}?id=${cardId}&action=visit&pin=${pin}`);
-                const result = await res.json();
+                const result = await requestData(`id=${cardId}&action=visit&pin=${pin}`);
                 if (result.success) {
                     location.reload();
                 } else {
