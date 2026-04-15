@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yolkshire Golden Yolk</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        yolkGreen: '#0d6a37',
+                        yolkGold: '#fcc314',
+                        yolkBg: '#f9fdfd',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        html, body { height: 100%; margin: 0; padding: 0; overflow-x: hidden; }
+        .progress-transition { transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1); }
+        .yolk-shadow { box-shadow: 0 20px 50px rgba(13, 106, 55, 0.15); }
+    </style>
+</head>
+<body class="bg-yolkBg flex items-center justify-center p-4">
+
+    <div id="app" class="bg-white w-full max-w-md rounded-[2.5rem] yolk-shadow p-8 text-center hidden border border-gray-50">
+        <img src="https://i.ibb.co/Lhx5thDS/Yolkshire-Logo-New-FHD.png" alt="Yolkshire" class="w-44 mx-auto mb-8">
+        
+        <div id="content">
+            </div>
+    </div>
+
+    <div id="loader" class="flex flex-col items-center">
+        <div class="animate-spin rounded-full h-14 w-14 border-t-4 border-yolkGreen border-opacity-20 border-t-yolkGreen"></div>
+        <p class="mt-4 font-black text-yolkGreen tracking-widest text-sm uppercase">Yolk-yeah! Loading...</p>
+    </div>
+
+    <script>
+        // YOUR LIVE API URL
+        const API_URL = "https://script.google.com/macros/s/AKfycbwg6t5TAWZ5cmMI1I0k0YfDXO5j4XCmklV8Pu2wcODV59HYktv3lQkSjpxlhsBpqA/exec";
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const cardId = urlParams.get('id');
+
+        async function init() {
+            if (!cardId) {
+                showError("Invalid QR Code. Please scan a valid Yolkshire card.");
+                return;
+            }
+            try {
+                const res = await fetch(`${API_URL}?id=${cardId}`);
+                const data = await res.json();
+                
+                if (data.error) {
+                    showError(data.error);
+                } else {
+                    renderApp(data);
+                }
+            } catch (err) {
+                showError("Connection error. Please check your internet.");
+            }
+        }
+
+        function showError(msg) {
+            document.getElementById('loader').classList.add('hidden');
+            const app = document.getElementById('app');
+            app.classList.remove('hidden');
+            document.getElementById('content').innerHTML = `
+                <div class="text-red-600 font-black text-2xl mb-4">⚠️ Oops!</div>
+                <p class="text-gray-500 font-medium">${msg}</p>
+                <button onclick="location.reload()" class="mt-8 text-yolkGreen font-black border-b-2 border-yolkGreen pb-1 uppercase text-xs tracking-widest">Try Again</button>
+            `;
+        }
+
+        function renderApp(data) {
+            document.getElementById('loader').classList.add('hidden');
+            document.getElementById('app').classList.remove('hidden');
+            const container = document.getElementById('content');
+
+            if (!data.name || data.name === "") {
+                // REGISTRATION UI
+                container.innerHTML = `
+                    <h2 class="text-2xl font-black text-yolkGreen mb-2">Activate Your Card</h2>
+                    <p class="text-gray-400 mb-10 text-[10px] uppercase tracking-[0.2em] font-black">Golden Yolk Loyalty</p>
+                    
+                    <div class="space-y-4">
+                        <input type="text" id="regName" placeholder="Full Name" class="w-full h-16 border-2 border-gray-100 rounded-2xl px-6 text-lg font-bold focus:border-yolkGreen outline-none transition-all">
+                        <input type="tel" id="regPhone" placeholder="10-Digit Phone" class="w-full h-16 border-2 border-gray-100 rounded-2xl px-6 text-lg font-bold focus:border-yolkGreen outline-none transition-all">
+                        <button onclick="register()" id="regBtn" class="w-full h-16 bg-yolkGreen text-white rounded-2xl font-black text-xl shadow-lg active:scale-95 transition-transform mt-6 uppercase tracking-widest">Activate Now</button>
+                    </div>
+                `;
+            } else {
+                // DASHBOARD UI
+                const visits = parseInt(data.visits) || 0;
+                const progress = (visits / 9) * 100;
+                const isReward = visits > 0 && visits % 3 === 0;
+
+                container.innerHTML = `
+                    <p class="text-[10px] uppercase tracking-[0.25em] text-yolkGreen font-black mb-1">Golden Yolk Member</p>
+                    <h2 class="text-3xl font-black text-gray-800 mb-10 tracking-tight">Hi, ${data.name.split(' ')[0]}!</h2>
+                    
+                    <div class="relative w-full bg-gray-100 h-6 rounded-full mb-6 p-1.5 shadow-inner">
+                        <div class="progress-transition bg-yolkGreen h-full rounded-full" style="width: 0%"></div>
+                    </div>
+                    
+                    <div class="flex justify-between items-end mb-12 px-2">
+                        <div class="text-left">
+                            <span class="text-7xl font-black text-yolkGreen leading-none">${visits}</span>
+                            <span class="text-2xl text-gray-300 font-black">/ 9</span>
+                        </div>
+                        <div class="text-right">
+                             <p class="text-[9px] text-gray-400 font-black uppercase mb-1 tracking-tighter">Last Recorded Visit</p>
+                             <p class="text-sm font-black text-gray-700">${data.lastVisit ? new Date(data.lastVisit).toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'}) : 'Join Date'}</p>
+                        </div>
+                    </div>
+
+                    ${isReward ? `
+                        <div class="bg-yolkGold bg-opacity-10 border-2 border-yolkGold rounded-2xl p-5 mb-10">
+                            <p class="text-yolkGreen font-black flex items-center justify-center gap-2">
+                                <span class="text-2xl">🎁</span> Yolk-yeah! Free Reward Earned!
+                            </p>
+                        </div>
+                    ` : ''}
+
+                    <div class="bg-yolkBg rounded-[2rem] p-8 border border-gray-100">
+                        <label class="block text-[10px] font-black text-gray-400 mb-4 uppercase tracking-[0.2em]">Staff Authorization</label>
+                        <input type="tel" id="staffPin" placeholder="••••" class="w-full h-16 bg-white border-2 border-gray-200 rounded-2xl mb-5 text-center text-4xl tracking-[1.5rem] font-black focus:border-yolkGreen outline-none transition-all placeholder:tracking-normal placeholder:text-gray-200">
+                        <button onclick="markVisit()" id="visitBtn" class="w-full h-16 bg-yolkGreen text-white rounded-2xl font-black text-xl shadow-xl active:scale-95 transition-transform uppercase tracking-widest">Collect Stamp</button>
+                    </div>
+                `;
+                
+                setTimeout(() => {
+                    document.querySelector('.progress-transition').style.width = progress + '%';
+                }, 200);
+            }
+        }
+
+        async function register() {
+            const btn = document.getElementById('regBtn');
+            const name = document.getElementById('regName').value;
+            const phone = document.getElementById('regPhone').value;
+            if(!name || !phone) return alert("Please fill both fields!");
+
+            btn.disabled = true;
+            btn.innerHTML = "Processing...";
+            await fetch(`${API_URL}?id=${cardId}&action=register&name=${encodeURIComponent(name)}&phone=${encodeURIComponent(phone)}`);
+            location.reload();
+        }
+
+        async function markVisit() {
+            const btn = document.getElementById('visitBtn');
+            const pin = document.getElementById('staffPin').value;
+            if(!pin) return alert("Enter Staff PIN");
+
+            btn.disabled = true;
+            btn.innerHTML = "Verifying...";
+            
+            try {
+                const res = await fetch(`${API_URL}?id=${cardId}&action=visit&pin=${pin}`);
+                const result = await res.json();
+                if (result.success) {
+                    location.reload();
+                } else {
+                    alert(result.error || "Invalid PIN");
+                    btn.disabled = false;
+                    btn.innerHTML = "Collect Stamp";
+                }
+            } catch (err) {
+                alert("Error connecting to server.");
+                btn.disabled = false;
+                btn.innerHTML = "Collect Stamp";
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
