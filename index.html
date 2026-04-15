@@ -7,7 +7,15 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
-            theme: { extend: { colors: { yolkGreen: '#0d6a37', yolkGold: '#fcc314', yolkBg: '#f9fdfd' } } }
+            theme: {
+                extend: {
+                    colors: {
+                        yolkGreen: '#0d6a37',
+                        yolkGold: '#fcc314',
+                        yolkBg: '#f9fdfd',
+                    }
+                }
+            }
         }
     </script>
     <style>
@@ -20,7 +28,9 @@
 
     <div id="app" class="bg-white w-full max-w-md rounded-[2.5rem] yolk-shadow p-8 text-center hidden border border-gray-50">
         <img src="yolkshire-new-logo-fhd.png" alt="Yolkshire" class="w-44 mx-auto mb-8">
-        <div id="content"></div>
+        
+        <div id="content">
+            </div>
     </div>
 
     <div id="loader" class="flex flex-col items-center">
@@ -29,120 +39,148 @@
     </div>
 
     <script>
-        const API_URL = "https://script.google.com/macros/s/AKfycbwg6t5TAWZ5cmMI1I0k0YfDXO5j4XCmklV8Pu2wcODV59HYktv3lQkSjpxlhsBpqA/exec";
+        // YOUR LIVE SHEETDB URL
+        const API_URL = "https://sheetdb.io/api/v1/im2qg2cit3cco";
+        
         const urlParams = new URLSearchParams(window.location.search);
         const cardId = urlParams.get('id');
 
-        function requestData(params) {
-            return new Promise((resolve, reject) => {
-                const callbackName = 'callback_' + Math.round(Math.random() * 1000000);
-                console.log(`[DEBUG] Requesting: ${callbackName}`);
-                
-                const timeout = setTimeout(() => {
-                    reject("Connection Timeout. Check if your @yolkshire account allows public scripts.");
-                }, 12000);
-
-                window[callbackName] = function(data) {
-                    clearTimeout(timeout);
-                    console.log(`[DEBUG] Data received for ${callbackName}`);
-                    delete window[callbackName];
-                    const scriptTag = document.getElementById(callbackName);
-                    if (scriptTag) document.body.removeChild(scriptTag);
-                    resolve(data);
-                };
-
-                const script = document.createElement('script');
-                script.id = callbackName;
-                script.src = `${API_URL}?${params}&callback=${callbackName}&_t=${Date.now()}`;
-                
-                script.onerror = () => {
-                    clearTimeout(timeout);
-                    console.error(`[DEBUG] Script Blocked. This usually means Google is asking for a Login.`);
-                    reject("Access Denied. Ensure Apps Script is shared with 'Anyone'.");
-                };
-                
-                document.body.appendChild(script);
-            });
-        }
-
+        // 1. Initial Data Fetch
         async function init() {
-            if (!cardId) {
-                showError("Invalid QR Code.");
-                return;
-            }
+            console.log("App Started for ID:", cardId);
+            if (!cardId) return showError("Invalid QR Code. Please scan a valid Yolkshire card.");
+
             try {
-                const data = await requestData(`id=${cardId}`);
-                if (data.error) showError(data.error);
-                else renderApp(data);
+                const response = await fetch(`${API_URL}/search?id=${cardId}`);
+                const data = await response.json();
+
+                if (data.length === 0) {
+                    showError("Card ID not found in database.");
+                } else {
+                    renderApp(data[0]);
+                }
             } catch (err) {
-                showError(err);
+                console.error("Fetch Error:", err);
+                showError("Connection failed. Check internet or SheetDB setup.");
             }
         }
 
+        // 2. Error Display
         function showError(msg) {
             document.getElementById('loader').classList.add('hidden');
             const app = document.getElementById('app');
             app.classList.remove('hidden');
             document.getElementById('content').innerHTML = `
-                <div class="text-red-600 font-black text-2xl mb-4">⚠️ Oops!</div>
-                <p class="text-gray-500 font-medium">${msg}</p>
-                <button onclick="location.reload()" class="mt-8 text-yolkGreen font-black border-b-2 border-yolkGreen pb-1 uppercase text-xs tracking-widest mx-auto block">Try Again</button>
+                <div class="text-red-600 font-black text-2xl mb-4">⚠️ System Error</div>
+                <p class="text-gray-500 font-medium mb-6">${msg}</p>
+                <button onclick="location.reload()" class="w-full h-14 bg-gray-100 text-gray-500 rounded-2xl font-black uppercase tracking-widest">Try Again</button>
             `;
         }
 
-        function renderApp(data) {
+        // 3. UI Rendering
+        function renderApp(user) {
             document.getElementById('loader').classList.add('hidden');
             document.getElementById('app').classList.remove('hidden');
             const container = document.getElementById('content');
 
-            if (!data.name || data.name === "") {
+            // If name is missing, show registration
+            if (!user.name || user.name.trim() === "") {
                 container.innerHTML = `
                     <h2 class="text-2xl font-black text-yolkGreen mb-2">Activate Your Card</h2>
                     <p class="text-gray-400 mb-10 text-[10px] uppercase tracking-[0.2em] font-black">Golden Yolk Loyalty</p>
-                    <div class="space-y-4 text-left">
-                        <input type="text" id="regName" placeholder="Full Name" class="w-full h-16 border-2 border-gray-100 rounded-2xl px-6 text-lg font-bold focus:border-yolkGreen outline-none">
-                        <input type="tel" id="regPhone" placeholder="10-Digit Phone" class="w-full h-16 border-2 border-gray-100 rounded-2xl px-6 text-lg font-bold focus:border-yolkGreen outline-none">
-                        <button onclick="register()" id="regBtn" class="w-full h-16 bg-yolkGreen text-white rounded-2xl font-black text-xl shadow-lg uppercase tracking-widest">Activate Now</button>
+                    <div class="space-y-4">
+                        <input type="text" id="regName" placeholder="Full Name" class="w-full h-16 border-2 border-gray-100 rounded-2xl px-6 text-lg font-bold focus:border-yolkGreen outline-none transition-all">
+                        <input type="tel" id="regPhone" placeholder="Phone Number" class="w-full h-16 border-2 border-gray-100 rounded-2xl px-6 text-lg font-bold focus:border-yolkGreen outline-none transition-all">
+                        <button onclick="registerUser()" id="regBtn" class="w-full h-16 bg-yolkGreen text-white rounded-2xl font-black text-xl shadow-lg active:scale-95 transition-transform mt-6 uppercase tracking-widest">Activate Now</button>
                     </div>
                 `;
             } else {
-                const visits = parseInt(data.visits) || 0;
+                // Show member dashboard
+                const visits = parseInt(user.visits) || 0;
                 const progress = (visits / 9) * 100;
+
                 container.innerHTML = `
                     <p class="text-[10px] uppercase tracking-[0.25em] text-yolkGreen font-black mb-1">Golden Yolk Member</p>
-                    <h2 class="text-3xl font-black text-gray-800 mb-10">Hi, ${data.name.split(' ')[0]}!</h2>
-                    <div class="w-full bg-gray-100 h-6 rounded-full mb-6 p-1.5 shadow-inner">
-                        <div class="progress-transition bg-yolkGreen h-full rounded-full" style="width: 0%"></div>
+                    <h2 class="text-3xl font-black text-gray-800 mb-10 tracking-tight">Hi, ${user.name.split(' ')[0]}!</h2>
+                    
+                    <div class="relative w-full bg-gray-100 h-6 rounded-full mb-6 p-1.5 shadow-inner">
+                        <div id="progressBar" class="progress-transition bg-yolkGreen h-full rounded-full" style="width: 0%"></div>
                     </div>
-                    <div class="flex justify-between items-end mb-12 px-2 text-left">
-                        <div><span class="text-7xl font-black text-yolkGreen">${visits}</span><span class="text-2xl text-gray-300 font-black">/ 9</span></div>
-                        <div class="text-right text-[10px] font-black text-gray-400 uppercase leading-tight">Last Visit<br><span class="text-sm text-gray-700 font-black">${data.lastVisit ? new Date(data.lastVisit).toLocaleDateString('en-IN') : 'N/A'}</span></div>
+                    
+                    <div class="flex justify-between items-end mb-12 px-2">
+                        <div class="text-left">
+                            <span class="text-7xl font-black text-yolkGreen leading-none">${visits}</span>
+                            <span class="text-2xl text-gray-300 font-black">/ 9</span>
+                        </div>
+                        <div class="text-right">
+                             <p class="text-[9px] text-gray-400 font-black uppercase mb-1 tracking-tighter">Last Visit</p>
+                             <p class="text-sm font-black text-gray-700">${user.last_visit || 'N/A'}</p>
+                        </div>
                     </div>
+
                     <div class="bg-yolkBg rounded-[2rem] p-8 border border-gray-100">
+                        <label class="block text-[10px] font-black text-gray-400 mb-4 uppercase tracking-[0.2em]">Staff PIN</label>
                         <input type="tel" id="staffPin" placeholder="••••" class="w-full h-16 bg-white border-2 border-gray-200 rounded-2xl mb-5 text-center text-4xl tracking-[1.5rem] font-black focus:border-yolkGreen outline-none">
-                        <button onclick="markVisit()" id="visitBtn" class="w-full h-16 bg-yolkGreen text-white rounded-2xl font-black text-xl uppercase tracking-widest shadow-xl">Collect Stamp</button>
+                        <button onclick="addVisit(${visits})" id="visitBtn" class="w-full h-16 bg-yolkGreen text-white rounded-2xl font-black text-xl shadow-xl uppercase tracking-widest">Collect Stamp</button>
                     </div>
                 `;
-                setTimeout(() => { document.querySelector('.progress-transition').style.width = progress + '%'; }, 200);
+                
+                setTimeout(() => {
+                    document.getElementById('progressBar').style.width = progress + '%';
+                }, 200);
             }
         }
 
-        async function register() {
+        // 4. Registration Logic
+        async function registerUser() {
             const name = document.getElementById('regName').value;
             const phone = document.getElementById('regPhone').value;
-            if(!name || !phone) return alert("Fill both fields!");
-            document.getElementById('regBtn').disabled = true;
-            await requestData(`id=${cardId}&action=register&name=${encodeURIComponent(name)}&phone=${encodeURIComponent(phone)}`);
-            location.reload();
+            const btn = document.getElementById('regBtn');
+
+            if (!name || !phone) return alert("Please enter both Name and Phone.");
+
+            btn.disabled = true;
+            btn.innerHTML = "Processing...";
+
+            try {
+                await fetch(`${API_URL}/id/${cardId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: name, phone: phone })
+                });
+                location.reload();
+            } catch (err) {
+                alert("Registration failed. Please try again.");
+                btn.disabled = false;
+                btn.innerHTML = "Activate Now";
+            }
         }
 
-        async function markVisit() {
+        // 5. Add Visit Logic
+        async function addVisit(currentVisits) {
             const pin = document.getElementById('staffPin').value;
-            if(!pin) return alert("Enter Staff PIN");
-            document.getElementById('visitBtn').disabled = true;
-            const result = await requestData(`id=${cardId}&action=visit&pin=${pin}`);
-            if (result.success) location.reload();
-            else { alert(result.error); document.getElementById('visitBtn').disabled = false; }
+            const btn = document.getElementById('visitBtn');
+
+            if (pin !== "2010") return alert("Invalid Staff PIN");
+
+            btn.disabled = true;
+            btn.innerHTML = "Stamping...";
+
+            const newVisits = currentVisits + 1;
+            const today = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+
+            try {
+                await fetch(`${API_URL}/id/${cardId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ visits: newVisits, last_visit: today })
+                });
+                location.reload();
+            } catch (err) {
+                alert("Update failed.");
+                btn.disabled = false;
+                btn.innerHTML = "Collect Stamp";
+            }
         }
 
         init();
