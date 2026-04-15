@@ -16,7 +16,7 @@
         .yolk-shadow { box-shadow: 0 20px 50px rgba(13, 106, 55, 0.15); }
     </style>
 </head>
-<body class="bg-yolkBg flex items-center justify-center p-4 text-gray-800">
+<body class="bg-yolkBg flex items-center justify-center p-4">
 
     <div id="app" class="bg-white w-full max-w-md rounded-[2.5rem] yolk-shadow p-8 text-center hidden border border-gray-50">
         <img src="yolkshire-new-logo-fhd.png" alt="Yolkshire" class="w-44 mx-auto mb-8">
@@ -36,16 +36,15 @@
         function requestData(params) {
             return new Promise((resolve, reject) => {
                 const callbackName = 'callback_' + Math.round(Math.random() * 1000000);
-                console.log(`[DEBUG] Initiating request: ${callbackName}`);
+                console.log(`[DEBUG] Requesting: ${callbackName}`);
                 
                 const timeout = setTimeout(() => {
-                    console.error(`[DEBUG] Request Timed Out: ${callbackName}`);
-                    reject("Connection Timeout. Check your Apps Script Deployment.");
-                }, 15000);
+                    reject("Connection Timeout. Check if your @yolkshire account allows public scripts.");
+                }, 12000);
 
                 window[callbackName] = function(data) {
-                    console.log(`[DEBUG] Callback Received for ${callbackName}:`, data);
                     clearTimeout(timeout);
+                    console.log(`[DEBUG] Data received for ${callbackName}`);
                     delete window[callbackName];
                     const scriptTag = document.getElementById(callbackName);
                     if (scriptTag) document.body.removeChild(scriptTag);
@@ -55,29 +54,26 @@
                 const script = document.createElement('script');
                 script.id = callbackName;
                 script.src = `${API_URL}?${params}&callback=${callbackName}&_t=${Date.now()}`;
+                
                 script.onerror = () => {
-                    console.error(`[DEBUG] Script Load Error (Likely CORB/CORS): ${callbackName}`);
-                    reject("Network Error or CORB block.");
+                    clearTimeout(timeout);
+                    console.error(`[DEBUG] Script Blocked. This usually means Google is asking for a Login.`);
+                    reject("Access Denied. Ensure Apps Script is shared with 'Anyone'.");
                 };
+                
                 document.body.appendChild(script);
             });
         }
 
         async function init() {
-            console.log(`[DEBUG] App started for ID: ${cardId}`);
             if (!cardId) {
-                showError("Invalid QR Code. Please scan a valid Yolkshire card.");
+                showError("Invalid QR Code.");
                 return;
             }
             try {
                 const data = await requestData(`id=${cardId}`);
-                if (data.error) {
-                    console.warn(`[DEBUG] API returned error: ${data.error}`);
-                    showError(data.error);
-                } else {
-                    console.log(`[DEBUG] Success! Rendering card for ${data.name || 'New User'}`);
-                    renderApp(data);
-                }
+                if (data.error) showError(data.error);
+                else renderApp(data);
             } catch (err) {
                 showError(err);
             }
@@ -88,8 +84,8 @@
             const app = document.getElementById('app');
             app.classList.remove('hidden');
             document.getElementById('content').innerHTML = `
-                <div class="text-red-600 font-black text-2xl mb-4 text-center">⚠️ Oops!</div>
-                <p class="text-gray-500 font-medium text-center">${msg}</p>
+                <div class="text-red-600 font-black text-2xl mb-4">⚠️ Oops!</div>
+                <p class="text-gray-500 font-medium">${msg}</p>
                 <button onclick="location.reload()" class="mt-8 text-yolkGreen font-black border-b-2 border-yolkGreen pb-1 uppercase text-xs tracking-widest mx-auto block">Try Again</button>
             `;
         }
@@ -119,8 +115,8 @@
                         <div class="progress-transition bg-yolkGreen h-full rounded-full" style="width: 0%"></div>
                     </div>
                     <div class="flex justify-between items-end mb-12 px-2 text-left">
-                        <div><span class="text-7xl font-black text-yolkGreen">${visits}</span><span class="text-2xl text-gray-300 font-black">/9</span></div>
-                        <div class="text-right text-[10px] font-black text-gray-400 uppercase leading-tight">Last Visit<br><span class="text-sm text-gray-700">${data.lastVisit ? new Date(data.lastVisit).toLocaleDateString('en-IN') : 'N/A'}</span></div>
+                        <div><span class="text-7xl font-black text-yolkGreen">${visits}</span><span class="text-2xl text-gray-300 font-black">/ 9</span></div>
+                        <div class="text-right text-[10px] font-black text-gray-400 uppercase leading-tight">Last Visit<br><span class="text-sm text-gray-700 font-black">${data.lastVisit ? new Date(data.lastVisit).toLocaleDateString('en-IN') : 'N/A'}</span></div>
                     </div>
                     <div class="bg-yolkBg rounded-[2rem] p-8 border border-gray-100">
                         <input type="tel" id="staffPin" placeholder="••••" class="w-full h-16 bg-white border-2 border-gray-200 rounded-2xl mb-5 text-center text-4xl tracking-[1.5rem] font-black focus:border-yolkGreen outline-none">
@@ -136,7 +132,6 @@
             const phone = document.getElementById('regPhone').value;
             if(!name || !phone) return alert("Fill both fields!");
             document.getElementById('regBtn').disabled = true;
-            console.log("[DEBUG] Sending Registration...");
             await requestData(`id=${cardId}&action=register&name=${encodeURIComponent(name)}&phone=${encodeURIComponent(phone)}`);
             location.reload();
         }
@@ -145,7 +140,6 @@
             const pin = document.getElementById('staffPin').value;
             if(!pin) return alert("Enter Staff PIN");
             document.getElementById('visitBtn').disabled = true;
-            console.log("[DEBUG] Sending Visit Stamp...");
             const result = await requestData(`id=${cardId}&action=visit&pin=${pin}`);
             if (result.success) location.reload();
             else { alert(result.error); document.getElementById('visitBtn').disabled = false; }
