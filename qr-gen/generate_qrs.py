@@ -1,13 +1,16 @@
-"""Generate 999 branded QR PNGs + CSVs for Yolkshire's Golden Yolk Loyalty Program.
+"""Generate 999 branded QR PNGs + CSVs + XLSX for Yolkshire's Golden Yolk Loyalty Program.
 
 Output:
-  ./qrs/YSLC001.png ... ./qrs/YSLC999.png   — 999 QR images
-  ./qrs.csv                                 — generic CSV (Canva, Figma, etc.)
-  ./qrs-indesign.csv                        — InDesign Data Merge CSV (image column @-prefixed)
+  ./qrs/YSLC001.png ... ./qrs/YSLC999.png     — 999 QR images
+  ./qrs.csv                                   — full CSV with qr_url column
+  ./qrs-indesign.csv                          — InDesign Data Merge CSV (image column @-prefixed)
+  ./qrs-chunk-{1..4}.csv                      — 300-row CSV chunks (URL-based, for InDesign/Marq)
+  ./qrs-chunk-{1..4}.xlsx                     — 300-row XLSX chunks with QR images
+                                                 EMBEDDED in cells (for Canva Bulk Create)
 
-Install once: pip install "qrcode[pil]"
+Install once: pip install "qrcode[pil]" openpyxl
 Run:          python generate_qrs.py
-Re-running is safe — existing PNGs are skipped; CSVs always re-emit.
+Re-running is safe — existing PNGs are skipped; CSVs/XLSX always re-emit.
 """
 import csv
 from pathlib import Path
@@ -16,6 +19,8 @@ from qrcode.constants import ERROR_CORRECT_H
 from qrcode.image.styledpil import StyledPilImage
 from qrcode.image.styles.moduledrawers.pil import RoundedModuleDrawer
 from qrcode.image.styles.colormasks import SolidFillColorMask
+from openpyxl import Workbook
+from openpyxl.drawing.image import Image as XLImage
 
 BASE_URL     = "https://yolkshire-pune.github.io/loyalty-card-tracker/?id="
 QR_HOST_URL  = "https://yolkshire-golden-yolk-qr.netlify.app/"   # public host for QR PNGs (Canva Bulk Create)
@@ -81,9 +86,34 @@ with std_csv.open(encoding='utf-8') as f:
 
 for i, start in enumerate(range(0, len(rows), CHUNK_SIZE), 1):
     chunk_rows = rows[start:start + CHUNK_SIZE]
-    chunk_path = HERE / f"qrs-chunk-{i}.csv"
-    with chunk_path.open('w', newline='', encoding='utf-8') as f:
+
+    # CSV chunk (URL-based — works for InDesign/Marq; Canva treats URLs as plain text)
+    chunk_csv = HERE / f"qrs-chunk-{i}.csv"
+    with chunk_csv.open('w', newline='', encoding='utf-8') as f:
         w = csv.writer(f)
         w.writerow(header)
         w.writerows(chunk_rows)
-    print(f"  chunk {i}: rows {start+1}-{start+len(chunk_rows)} -> {chunk_path.name}")
+
+    # XLSX chunk with embedded QR images in cells — required by Canva Bulk Create
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "QRs"
+    ws.append(['card_id', 'qr', 'qr_url', 'url'])
+    ws.column_dimensions['A'].width = 12
+    ws.column_dimensions['B'].width = 16      # cell wide enough for the embedded image
+    ws.column_dimensions['C'].width = 60
+    ws.column_dimensions['D'].width = 60
+    for r, row in enumerate(chunk_rows, start=2):
+        card_id, qr_filename, qr_url, url = row
+        ws.cell(row=r, column=1, value=card_id)
+        ws.cell(row=r, column=3, value=qr_url)
+        ws.cell(row=r, column=4, value=url)
+        ws.row_dimensions[r].height = 75      # ~100 px, fits the QR
+        img = XLImage(str(OUT_DIR / qr_filename))
+        img.width, img.height = 90, 90        # sized within the cell, not floating
+        img.anchor = f'B{r}'
+        ws.add_image(img)
+    chunk_xlsx = HERE / f"qrs-chunk-{i}.xlsx"
+    wb.save(chunk_xlsx)
+
+    print(f"  chunk {i}: rows {start+1}-{start+len(chunk_rows)} -> {chunk_csv.name} + {chunk_xlsx.name}")

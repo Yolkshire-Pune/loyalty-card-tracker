@@ -1,5 +1,6 @@
-# Generated QR output (999 PNGs, ~59 MB — regenerate with qr-gen/generate_qrs.py)
+# Generated QR output — regenerate with qr-gen/generate_qrs.py
 qr-gen/qrs/
+qr-gen/qrs-chunk-*.xlsx
 
 # Python
 __pycache__/
