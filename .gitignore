@@ -1,0 +1,12 @@
+# Generated QR output (999 PNGs, ~59 MB — regenerate with qr-gen/generate_qrs.py)
+qr-gen/qrs/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# OS cruft
+.DS_Store
+Thumbs.db
