@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Yolkshire Golden Yolk</title>
+    <title>Yolkshire's Golden Yolk Loyalty Program</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -112,7 +112,7 @@
 <body class="bg-yolkBg flex items-center justify-center p-4 min-h-screen text-onSurface font-medium antialiased">
 
     <div id="app" class="bg-surface w-full max-w-sm sm:max-w-md rounded-3xl yolk-shadow p-6 text-center hidden border border-gray-50 fade-in">
-        <img src="yolkshire-new-logo-fhd.png" alt="Yolkshire" class="w-32 mx-auto mb-6">
+        <img src="yolkshire-new-logo-fhd.png" alt="Yolkshire's Golden Yolk Loyalty Program" class="w-32 mx-auto mb-6">
         <div id="main-content"></div>
     </div>
 
@@ -163,7 +163,44 @@
         // --- CONSTANTS ---
         const API_URL = "https://sheetdb.io/api/v1/im2qg2cit3cco";
         const BUSINESS_WHATSAPP = '+918446536065';
-        const PHONE_RULES = { '+91': 10, '+1': 10, '+44': 10, '+971': 9 };
+        const INSTAGRAM_HANDLE = 'yolkshire';
+        const BRAND_NAME = "Yolkshire's Golden Yolk Loyalty Program";
+        // [min, max] digit length (mobile) per ISD code
+        const PHONE_RULES = {
+            '+91':  [10, 10],  // India
+            '+1':   [10, 10],  // USA / Canada
+            '+44':  [10, 10],  // UK
+            '+61':  [9, 9],    // Australia
+            '+64':  [8, 10],   // New Zealand
+            '+971': [9, 9],    // UAE
+            '+966': [9, 9],    // Saudi Arabia
+            '+974': [8, 8],    // Qatar
+            '+968': [8, 8],    // Oman
+            '+965': [8, 8],    // Kuwait
+            '+973': [8, 8],    // Bahrain
+            '+65':  [8, 8],    // Singapore
+            '+60':  [9, 10],   // Malaysia
+            '+66':  [9, 9],    // Thailand
+            '+62':  [9, 12],   // Indonesia
+            '+63':  [10, 10],  // Philippines
+            '+81':  [10, 10],  // Japan
+            '+86':  [11, 11],  // China
+            '+82':  [9, 10],   // South Korea
+            '+852': [8, 8],    // Hong Kong
+            '+49':  [10, 11],  // Germany
+            '+33':  [9, 9],    // France
+            '+39':  [9, 10],   // Italy
+            '+34':  [9, 9],    // Spain
+            '+31':  [9, 9],    // Netherlands
+            '+41':  [9, 9],    // Switzerland
+            '+46':  [9, 9],    // Sweden
+            '+47':  [8, 8],    // Norway
+            '+353': [9, 9],    // Ireland
+            '+92':  [10, 10],  // Pakistan
+            '+880': [10, 10],  // Bangladesh
+            '+94':  [9, 9],    // Sri Lanka
+            '+977': [10, 10],  // Nepal
+        };
         // ⚠️ [TEST FLAG] Set to true for production logic
         const ENABLE_DAILY_LIMIT_CHECK = false;
 
@@ -184,9 +221,34 @@
         }
         function validatePhone(isd, raw) {
             const digits = (raw || '').replace(/\D/g, '');
-            const expected = PHONE_RULES[isd] ?? 10;
-            if (digits.length !== expected) return { ok: false, reason: `Phone must be ${expected} digits for ${isd}.` };
+            const [min, max] = PHONE_RULES[isd] || [7, 15];
+            if (digits.length < min || digits.length > max) {
+                const label = min === max ? `${min}` : `${min}–${max}`;
+                return { ok: false, reason: `Phone must be ${label} digits for ${isd}.` };
+            }
             return { ok: true, digits };
+        }
+
+        function splitPhone(stored) {
+            const s = String(stored || '').trim();
+            if (!s.startsWith('+')) return { code: '', digits: s };
+            for (let len = 4; len >= 1; len--) {
+                const tryCode = s.slice(0, len + 1);
+                if (PHONE_RULES[tryCode]) return { code: tryCode, digits: s.slice(len + 1) };
+            }
+            return { code: s.slice(0, 3), digits: s.slice(3) };
+        }
+
+        function formatPhone(stored) {
+            const { code, digits } = splitPhone(stored);
+            if (!code) return stored;
+            const grouped =
+                digits.length === 10 ? `${digits.slice(0,5)} ${digits.slice(5)}` :
+                digits.length === 9  ? `${digits.slice(0,3)} ${digits.slice(3,6)} ${digits.slice(6)}` :
+                digits.length === 8  ? `${digits.slice(0,4)} ${digits.slice(4)}` :
+                digits.length === 11 ? `${digits.slice(0,3)} ${digits.slice(3,7)} ${digits.slice(7)}` :
+                digits;
+            return `(${code}) ${grouped}`;
         }
 
         // --- DATE / GREETING HELPERS ---
@@ -389,6 +451,7 @@
             if (!currentUser.name && view === 'default') {
                 container.innerHTML = `
                     <div class="p-6">
+                        <p class="text-[10px] uppercase tracking-[0.25em] text-primary font-bold mb-2">${BRAND_NAME}</p>
                         <p class="text-xs uppercase tracking-[0.3em] text-onSurfaceVariant font-bold mb-3">Scan Detected</p>
                         <h1 class="text-2xl font-semibold text-primary mb-12">#${escapeHTML(cardId)}</h1>
                         ${PrimaryButton("Activate Card", "render('register')")}
@@ -397,14 +460,54 @@
             // --- VIEW: REGISTER ---
             else if (view === 'register') {
                 const isdHTML = `
-                    <select id="isd" class="border border-outline rounded-xl px-2.5 font-bold text-sm outline-none bg-white">
-                        <option value="+91" selected>🇮🇳 +91</option>
-                        <option value="+1">🇺🇸 +1</option>
-                        <option value="+44">🇬🇧 +44</option>
-                        <option value="+971">🇦🇪 +971</option>
+                    <select id="isd" class="border border-outline rounded-xl px-2.5 font-bold text-sm outline-none bg-white max-w-[140px]">
+                        <optgroup label="India & Subcontinent">
+                            <option value="+91" selected>🇮🇳 +91 India</option>
+                            <option value="+92">🇵🇰 +92 Pakistan</option>
+                            <option value="+880">🇧🇩 +880 Bangladesh</option>
+                            <option value="+94">🇱🇰 +94 Sri Lanka</option>
+                            <option value="+977">🇳🇵 +977 Nepal</option>
+                        </optgroup>
+                        <optgroup label="Middle East">
+                            <option value="+971">🇦🇪 +971 UAE</option>
+                            <option value="+966">🇸🇦 +966 Saudi Arabia</option>
+                            <option value="+974">🇶🇦 +974 Qatar</option>
+                            <option value="+968">🇴🇲 +968 Oman</option>
+                            <option value="+965">🇰🇼 +965 Kuwait</option>
+                            <option value="+973">🇧🇭 +973 Bahrain</option>
+                        </optgroup>
+                        <optgroup label="North America">
+                            <option value="+1">🇺🇸 +1 USA / Canada</option>
+                        </optgroup>
+                        <optgroup label="Europe">
+                            <option value="+44">🇬🇧 +44 United Kingdom</option>
+                            <option value="+353">🇮🇪 +353 Ireland</option>
+                            <option value="+49">🇩🇪 +49 Germany</option>
+                            <option value="+33">🇫🇷 +33 France</option>
+                            <option value="+39">🇮🇹 +39 Italy</option>
+                            <option value="+34">🇪🇸 +34 Spain</option>
+                            <option value="+31">🇳🇱 +31 Netherlands</option>
+                            <option value="+41">🇨🇭 +41 Switzerland</option>
+                            <option value="+46">🇸🇪 +46 Sweden</option>
+                            <option value="+47">🇳🇴 +47 Norway</option>
+                        </optgroup>
+                        <optgroup label="Asia Pacific">
+                            <option value="+65">🇸🇬 +65 Singapore</option>
+                            <option value="+61">🇦🇺 +61 Australia</option>
+                            <option value="+64">🇳🇿 +64 New Zealand</option>
+                            <option value="+60">🇲🇾 +60 Malaysia</option>
+                            <option value="+66">🇹🇭 +66 Thailand</option>
+                            <option value="+62">🇮🇩 +62 Indonesia</option>
+                            <option value="+63">🇵🇭 +63 Philippines</option>
+                            <option value="+852">🇭🇰 +852 Hong Kong</option>
+                            <option value="+86">🇨🇳 +86 China</option>
+                            <option value="+82">🇰🇷 +82 South Korea</option>
+                            <option value="+81">🇯🇵 +81 Japan</option>
+                        </optgroup>
                     </select>`;
                 container.innerHTML = `
-                    <h2 class="text-xl font-semibold text-primary mb-6">Join Golden Yolk Loyalty</h2>
+                    <h2 class="text-xl font-semibold text-primary mb-2">Join Yolkshire's</h2>
+                    <p class="text-primary font-semibold mb-6">Golden Yolk Loyalty Program</p>
                     ${OutlinedTextField("regName", "Full Name", "John Doe")}
                     ${OutlinedTextField("regPhone", "Phone Number", "9876543210", "tel", isdHTML)}
                     <div class="mt-8">${PrimaryButton("Complete Activation", "handleRegistration()")}</div>
@@ -415,8 +518,9 @@
                 container.innerHTML = `
                     <div class="py-10">
                         <div class="w-16 h-16 bg-green-100 text-primary rounded-full flex items-center justify-center mx-auto mb-6 text-2xl">✓</div>
-                        <h2 class="text-2xl font-semibold text-gray-800 mb-2 tracking-tight">Congratulations!</h2>
-                        <p class="text-sm text-gray-500 mb-10 font-medium">Your loyalty card #${escapeHTML(currentUser.id)} is now active.</p>
+                        <h2 class="text-2xl font-semibold text-gray-800 mb-2 tracking-tight">Welcome aboard!</h2>
+                        <p class="text-sm text-gray-500 mb-2 font-medium">Your loyalty card #${escapeHTML(currentUser.id)} is now active.</p>
+                        <p class="text-[10px] uppercase tracking-[0.2em] text-primary font-bold mb-10">${BRAND_NAME}</p>
                         ${PrimaryButton("Go to Profile", "location.reload()")}
                     </div>
                 `;
@@ -424,30 +528,15 @@
             // --- VIEW: PROFILE ---
             else if (view === 'default' || view === 'profile') {
                 const visits = parseInt(currentUser.visits) || 0;
-                const progress = (visits / 9) * 100;
+                const progress = Math.min((visits / 9) * 100, 100);
                 const firstName = escapeHTML((currentUser.name || '').split(' ')[0]);
                 const g = getGreeting(firstName);
-                const isRewardEarned = visits > 0 && visits % 3 === 0;
-                const isNextReward = !isRewardEarned && (visits + 1) % 3 === 0 && visits < 9;
+                const isCardComplete = visits >= 9;
+                const isRewardEarned = !isCardComplete && visits > 0 && visits % 3 === 0;
+                const isNextReward = !isRewardEarned && !isCardComplete && (visits + 1) % 3 === 0;
 
-                const rewardCardClasses = isRewardEarned
-                    ? 'bg-gradient-to-br from-warning/25 to-warning/5 border-2 border-warning reward-glow'
-                    : 'bg-surfaceVariant bg-opacity-30 border border-gray-100';
-
-                const heroBanner = isRewardEarned ? `
-                    <div class="mb-5 text-center">
-                        <i class="fa-solid fa-gift gift-wiggle text-warning text-5xl mb-3"></i>
-                        <h3 class="text-lg font-black text-primary tracking-tight leading-tight">YOU'VE EARNED<br>A FREE REWARD</h3>
-                        <p class="text-xs text-onSurfaceVariant font-semibold mt-2">Show this screen to your server</p>
-                    </div>
-                ` : '';
-
-                const nextRewardPill = isNextReward ? `
-                    <div class="mb-4 py-1.5 px-3 bg-warning bg-opacity-10 text-primary text-[10px] font-black uppercase tracking-widest border border-warning border-opacity-20 rounded-lg">Stamp #${visits + 1} unlocks a Free Reward 🎁</div>
-                ` : '';
-
-                container.innerHTML = `
-                    <p class="text-[10px] uppercase tracking-[0.25em] text-primary font-bold mb-1">Golden Yolk Member</p>
+                const profileHeader = `
+                    <p class="text-[10px] uppercase tracking-[0.25em] text-primary font-bold mb-1">${BRAND_NAME}</p>
                     <h2 class="text-xl font-bold text-gray-800 mb-1 tracking-tight leading-tight">${escapeHTML(g.headline)}</h2>
                     <p class="text-sm text-onSurfaceVariant font-medium mb-7">${escapeHTML(g.tagline)}</p>
 
@@ -463,33 +552,76 @@
                         <div class="grid grid-cols-2 gap-x-4 gap-y-2">
                             ${ProfileStat("Card ID", escapeHTML(currentUser.id))}
                             ${ProfileStat("Join Date", getJoinDate(currentUser))}
-                            ${ProfileStat("Phone", escapeHTML(currentUser.phone))}
+                            ${ProfileStat("Phone", escapeHTML(formatPhone(currentUser.phone)))}
                             ${ProfileStat("Last Visit", escapeHTML(currentUser.last_visit || "N/A"))}
                         </div>
                     </div>
-
-                    <div class="${rewardCardClasses} rounded-3xl p-6 mb-6">
-                        ${heroBanner}
-                        <div class="flex items-center gap-2 mb-4 justify-center">
-                            <label class="block text-xs font-bold text-onSurfaceVariant uppercase tracking-widest">Staff PIN</label>
-                            <button onclick="showDialog('Staff Area', 'Ask your server to enter their pin to collect stamp.')" class="text-onSurfaceVariant text-xs hover:text-primary transition-colors"><i class="fa-solid fa-circle-info"></i></button>
-                        </div>
-                        <div class="relative h-14 mb-5">
-                            <div class="absolute inset-0 flex justify-center items-center gap-4 pointer-events-none bg-surface border border-outline rounded-xl">
-                                <span class="pin-dot w-4 h-4 rounded-full bg-surfaceVariant"></span>
-                                <span class="pin-dot w-4 h-4 rounded-full bg-surfaceVariant"></span>
-                                <span class="pin-dot w-4 h-4 rounded-full bg-surfaceVariant"></span>
-                                <span class="pin-dot w-4 h-4 rounded-full bg-surfaceVariant"></span>
-                            </div>
-                            <input type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="4" id="staffPin" oninput="updatePinDots(this.value)" autocomplete="off" class="absolute inset-0 w-full h-full opacity-0">
-                        </div>
-                        ${nextRewardPill}
-                        ${PrimaryButton("Collect Stamp", "handleVisit(" + visits + ")")}
-                    </div>
-
-                    <button onclick="render('history')" class="text-primary font-bold text-xs uppercase tracking-[0.2em] border-b-2 border-primary border-opacity-20 pb-1 mx-auto block">Visit History</button>
                 `;
-                setTimeout(() => document.getElementById('pBar').style.width = progress + '%', 200);
+
+                if (isCardComplete) {
+                    container.innerHTML = `
+                        ${profileHeader}
+                        <div class="bg-gradient-to-br from-warning/25 to-warning/5 border-2 border-warning reward-glow rounded-3xl p-6 mb-6 text-center">
+                            <i class="fa-solid fa-trophy text-warning text-5xl mb-3 gift-wiggle"></i>
+                            <h3 class="text-lg font-black text-primary tracking-tight leading-tight mb-2">CARD COMPLETE!</h3>
+                            <p class="text-sm text-onSurface font-medium mb-4">
+                                You've collected all 9 stamps. Thank you for being part of ${BRAND_NAME}!
+                            </p>
+                            <p class="text-sm text-onSurfaceVariant font-medium">
+                                Follow us on Instagram
+                                <a href="https://instagram.com/${INSTAGRAM_HANDLE}" target="_blank" rel="noopener" class="text-primary font-bold"><i class="fa-brands fa-instagram"></i> @${INSTAGRAM_HANDLE}</a>
+                                for new offers like this.
+                            </p>
+                        </div>
+
+                        <button onclick="openWhatsAppFeedback(${visits})" class="w-full bg-[#25D366] text-white rounded-full py-3 font-bold text-sm uppercase tracking-wider mb-3 flex items-center justify-center gap-2 active:scale-95 transition-transform">
+                            <i class="fa-brands fa-whatsapp text-lg"></i> Share Feedback
+                        </button>
+
+                        <button onclick="render('history')" class="text-primary font-bold text-xs uppercase tracking-[0.2em] border-b-2 border-primary border-opacity-20 pb-1 mx-auto block">Visit History</button>
+                    `;
+                } else {
+                    const rewardCardClasses = isRewardEarned
+                        ? 'bg-gradient-to-br from-warning/25 to-warning/5 border-2 border-warning reward-glow'
+                        : 'bg-surfaceVariant bg-opacity-30 border border-gray-100';
+
+                    const heroBanner = isRewardEarned ? `
+                        <div class="mb-5 text-center">
+                            <i class="fa-solid fa-gift gift-wiggle text-warning text-5xl mb-3"></i>
+                            <h3 class="text-lg font-black text-primary tracking-tight leading-tight">YOU'VE EARNED<br>A FREE REWARD</h3>
+                            <p class="text-xs text-onSurfaceVariant font-semibold mt-2">Show this screen to your server</p>
+                        </div>
+                    ` : '';
+
+                    const nextRewardPill = isNextReward ? `
+                        <div class="mb-4 py-1.5 px-3 bg-warning bg-opacity-10 text-primary text-[10px] font-black uppercase tracking-widest border border-warning border-opacity-20 rounded-lg">Stamp #${visits + 1} unlocks a Free Reward 🎁</div>
+                    ` : '';
+
+                    container.innerHTML = `
+                        ${profileHeader}
+                        <div class="${rewardCardClasses} rounded-3xl p-6 mb-6">
+                            ${heroBanner}
+                            <div class="flex items-center gap-2 mb-4 justify-center">
+                                <label class="block text-xs font-bold text-onSurfaceVariant uppercase tracking-widest">Staff PIN</label>
+                                <button onclick="showDialog('Staff Area', 'Ask your server to enter their pin to collect stamp.')" class="text-onSurfaceVariant text-xs hover:text-primary transition-colors"><i class="fa-solid fa-circle-info"></i></button>
+                            </div>
+                            <div class="relative h-14 mb-5">
+                                <div class="absolute inset-0 flex justify-center items-center gap-4 pointer-events-none bg-surface border border-outline rounded-xl">
+                                    <span class="pin-dot w-4 h-4 rounded-full bg-surfaceVariant"></span>
+                                    <span class="pin-dot w-4 h-4 rounded-full bg-surfaceVariant"></span>
+                                    <span class="pin-dot w-4 h-4 rounded-full bg-surfaceVariant"></span>
+                                    <span class="pin-dot w-4 h-4 rounded-full bg-surfaceVariant"></span>
+                                </div>
+                                <input type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="4" id="staffPin" oninput="updatePinDots(this.value)" autocomplete="off" class="absolute inset-0 w-full h-full opacity-0">
+                            </div>
+                            ${nextRewardPill}
+                            ${PrimaryButton("Collect Stamp", "handleVisit(" + visits + ")")}
+                        </div>
+
+                        <button onclick="render('history')" class="text-primary font-bold text-xs uppercase tracking-[0.2em] border-b-2 border-primary border-opacity-20 pb-1 mx-auto block">Visit History</button>
+                    `;
+                }
+                setTimeout(() => { const bar = document.getElementById('pBar'); if (bar) bar.style.width = progress + '%'; }, 200);
             }
             // --- VIEW: HISTORY ---
             else if (view === 'history') {
@@ -567,6 +699,9 @@
             if (btn && btn.disabled) return;
             if (btn) btn.disabled = true;
             const reenable = () => { if (btn) btn.disabled = false; };
+
+            const willBe = currentVisits + 1;
+            console.log(`[DEBUG] handleVisit: currentVisits=${currentVisits} → newVisitCount=${willBe}, isRewardStamp=${willBe % 3 === 0}, DB user.visits=${currentUser.visits}`);
 
             const pin = document.getElementById('staffPin').value;
             if (pin !== "2010") {
