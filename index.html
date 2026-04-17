@@ -5,182 +5,236 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Yolkshire Golden Yolk</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script>
         tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        yolkGreen: '#0d6a37',
-                        yolkGold: '#fcc314',
-                        yolkBg: '#f9fdfd',
-                    }
-                }
-            }
+            theme: { extend: { colors: { yolkGreen: '#0d6a37', yolkGold: '#fcc314', yolkBg: '#f9fdfd' } } }
         }
     </script>
     <style>
-        html, body { height: 100%; margin: 0; padding: 0; overflow-x: hidden; }
         .progress-transition { transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1); }
-        .yolk-shadow { box-shadow: 0 20px 50px rgba(13, 106, 55, 0.15); }
+        .yolk-shadow { box-shadow: 0 20px 50px rgba(13, 106, 55, 0.12); }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body class="bg-yolkBg flex items-center justify-center p-4">
+<body class="bg-yolkBg flex items-center justify-center p-4 min-h-screen text-gray-800 font-medium">
 
-    <div id="app" class="bg-white w-full max-w-md rounded-[2.5rem] yolk-shadow p-8 text-center hidden border border-gray-50">
-        <img src="yolkshire-new-logo-fhd.png" alt="Yolkshire" class="w-44 mx-auto mb-8">
-        
-        <div id="content">
-            </div>
+    <div id="app" class="bg-white w-full max-w-md rounded-[3rem] yolk-shadow p-8 text-center hidden border border-gray-50 fade-in">
+        <img src="yolkshire-new-logo-fhd.png" alt="Yolkshire" class="w-40 mx-auto mb-8">
+        <div id="main-content"></div>
     </div>
 
     <div id="loader" class="flex flex-col items-center">
-        <div class="animate-spin rounded-full h-14 w-14 border-t-4 border-yolkGreen border-opacity-20 border-t-yolkGreen"></div>
-        <p class="mt-4 font-black text-yolkGreen tracking-widest text-sm uppercase">Yolk-Yeah! Loading...</p>
+        <div class="animate-spin rounded-full h-12 w-12 border-t-4 border-yolkGreen border-opacity-20 border-t-yolkGreen"></div>
     </div>
 
     <script>
-        // YOUR LIVE SHEETDB URL
         const API_URL = "https://sheetdb.io/api/v1/im2qg2cit3cco";
-        
         const urlParams = new URLSearchParams(window.location.search);
         const cardId = urlParams.get('id');
+        let currentUser = null;
 
-        // 1. Initial Data Fetch
         async function init() {
-            console.log("App Started for ID:", cardId);
-            if (!cardId) return showError("Invalid QR Code. Please scan a valid Yolkshire card.");
-
+            if (!cardId) return showError("Invalid Scan. No Card ID detected.");
             try {
-                const response = await fetch(`${API_URL}/search?id=${cardId}`);
-                const data = await response.json();
-
-                if (data.length === 0) {
-                    showError("Card ID not found in database.");
-                } else {
-                    renderApp(data[0]);
-                }
-            } catch (err) {
-                console.error("Fetch Error:", err);
-                showError("Connection failed. Check internet or SheetDB setup.");
-            }
+                const res = await fetch(`${API_URL}/search?id=${cardId}`);
+                const data = await res.json();
+                if (data.length === 0) return showError("Card ID not found in system.");
+                currentUser = data[0];
+                render();
+            } catch (err) { showError("Connection Error. Please try again."); }
         }
 
-        // 2. Error Display
-        function showError(msg) {
-            document.getElementById('loader').classList.add('hidden');
-            const app = document.getElementById('app');
-            app.classList.remove('hidden');
-            document.getElementById('content').innerHTML = `
-                <div class="text-red-600 font-black text-2xl mb-4">⚠️ System Error</div>
-                <p class="text-gray-500 font-medium mb-6">${msg}</p>
-                <button onclick="location.reload()" class="w-full h-14 bg-gray-100 text-gray-500 rounded-2xl font-black uppercase tracking-widest">Try Again</button>
-            `;
-        }
-
-        // 3. UI Rendering
-        function renderApp(user) {
+        function render(view = 'default') {
             document.getElementById('loader').classList.add('hidden');
             document.getElementById('app').classList.remove('hidden');
-            const container = document.getElementById('content');
+            const container = document.getElementById('main-content');
 
-            // If name is missing, show registration
-            if (!user.name || user.name.trim() === "") {
+            // --- VIEW: SCAN (Initial) ---
+            if (!currentUser.name && view === 'default') {
                 container.innerHTML = `
-                    <h2 class="text-2xl font-black text-yolkGreen mb-2">Activate Your Card</h2>
-                    <p class="text-gray-400 mb-10 text-[10px] uppercase tracking-[0.2em] font-black">Golden Yolk Loyalty</p>
-                    <div class="space-y-4">
-                        <input type="text" id="regName" placeholder="Full Name" class="w-full h-16 border-2 border-gray-100 rounded-2xl px-6 text-lg font-bold focus:border-yolkGreen outline-none transition-all">
-                        <input type="tel" id="regPhone" placeholder="Phone Number" class="w-full h-16 border-2 border-gray-100 rounded-2xl px-6 text-lg font-bold focus:border-yolkGreen outline-none transition-all">
-                        <button onclick="registerUser()" id="regBtn" class="w-full h-16 bg-yolkGreen text-white rounded-2xl font-black text-xl shadow-lg active:scale-95 transition-transform mt-6 uppercase tracking-widest">Activate Now</button>
+                    <div class="py-10">
+                        <p class="text-[10px] uppercase tracking-[0.3em] text-gray-400 font-bold mb-2">New Card Detected</p>
+                        <h1 class="text-4xl font-black text-yolkGreen mb-8">#${cardId}</h1>
+                        <button onclick="render('register')" class="w-full h-16 bg-yolkGreen text-white rounded-2xl font-black text-xl shadow-lg uppercase tracking-widest active:scale-95 transition-transform">Activate Card</button>
                     </div>
                 `;
-            } else {
-                // Show member dashboard
-                const visits = parseInt(user.visits) || 0;
+            } 
+            // --- VIEW: REGISTER ---
+            else if (view === 'register') {
+                container.innerHTML = `
+                    <h2 class="text-2xl font-black text-yolkGreen mb-6">Join Golden Yolk</h2>
+                    <div class="space-y-4 text-left">
+                        <input type="text" id="regName" placeholder="Full Name" class="w-full h-16 border-2 border-gray-100 rounded-2xl px-6 font-bold outline-none focus:border-yolkGreen transition-all">
+                        <div class="flex gap-2">
+                            <select id="isd" class="h-16 border-2 border-gray-100 rounded-2xl px-3 font-bold outline-none bg-white">
+                                <option value="+91" selected>🇮🇳 +91</option>
+                                <option value="+1">🇺🇸 +1</option>
+                                <option value="+44">🇬🇧 +44</option>
+                                <option value="+971">🇦🇪 +971</option>
+                            </select>
+                            <input type="tel" id="regPhone" placeholder="Phone Number" class="flex-1 h-16 border-2 border-gray-100 rounded-2xl px-6 font-bold outline-none focus:border-yolkGreen transition-all">
+                        </div>
+                        <button onclick="handleRegistration()" id="regBtn" class="w-full h-16 bg-yolkGreen text-white rounded-2xl font-black text-xl shadow-lg uppercase tracking-widest mt-4">Complete Sign-Up</button>
+                    </div>
+                `;
+            }
+            // --- VIEW: SUCCESS ---
+            else if (view === 'success') {
+                container.innerHTML = `
+                    <div class="py-10">
+                        <div class="w-20 h-20 bg-green-100 text-yolkGreen rounded-full flex items-center justify-center mx-auto mb-6 text-3xl">✓</div>
+                        <h2 class="text-3xl font-black text-gray-800 mb-2">Congratulations!</h2>
+                        <p class="text-gray-500 mb-10 font-medium">Your loyalty card is now active.</p>
+                        <button onclick="location.reload()" class="w-full h-16 bg-yolkGreen text-white rounded-2xl font-black text-xl shadow-lg uppercase tracking-widest">Go to Profile</button>
+                    </div>
+                `;
+            }
+            // --- VIEW: PROFILE ---
+            else if (view === 'default' || view === 'profile') {
+                const visits = parseInt(currentUser.visits) || 0;
                 const progress = (visits / 9) * 100;
+                const isNextReward = (visits + 1) % 3 === 0;
 
                 container.innerHTML = `
                     <p class="text-[10px] uppercase tracking-[0.25em] text-yolkGreen font-black mb-1">Golden Yolk Member</p>
-                    <h2 class="text-3xl font-black text-gray-800 mb-10 tracking-tight">Hi, ${user.name.split(' ')[0]}!</h2>
+                    <h2 class="text-3xl font-black text-gray-800 mb-8 tracking-tight">Hi, ${currentUser.name.split(' ')[0]}!</h2>
                     
-                    <div class="relative w-full bg-gray-100 h-6 rounded-full mb-6 p-1.5 shadow-inner">
-                        <div id="progressBar" class="progress-transition bg-yolkGreen h-full rounded-full" style="width: 0%"></div>
+                    <div class="w-full bg-gray-100 h-6 rounded-full mb-6 p-1.5 shadow-inner">
+                        <div id="pBar" class="progress-transition bg-yolkGreen h-full rounded-full" style="width: 0%"></div>
                     </div>
                     
-                    <div class="flex justify-between items-end mb-12 px-2">
-                        <div class="text-left">
-                            <span class="text-7xl font-black text-yolkGreen leading-none">${visits}</span>
-                            <span class="text-2xl text-gray-300 font-black">/ 9</span>
+                    <div class="flex justify-between items-center mb-8 px-2 border-b border-gray-50 pb-8">
+                        <div class="text-left leading-none">
+                            <span class="text-6xl font-black text-yolkGreen">${visits}</span>
+                            <span class="text-xl text-gray-300 font-black">/ 9</span>
                         </div>
-                        <div class="text-right">
-                             <p class="text-[9px] text-gray-400 font-black uppercase mb-1 tracking-tighter">Last Visit</p>
-                             <p class="text-sm font-black text-gray-700">${user.last_visit || 'N/A'}</p>
+                        <div class="text-right text-[10px] font-black text-gray-400 uppercase leading-snug">
+                            Card ID: ${currentUser.id}<br>
+                            Phone: ${currentUser.phone}<br>
+                            Last: ${currentUser.last_visit || 'Join Date'}
                         </div>
                     </div>
 
-                    <div class="bg-yolkBg rounded-[2rem] p-8 border border-gray-100">
-                        <label class="block text-[10px] font-black text-gray-400 mb-4 uppercase tracking-[0.2em]">Staff PIN</label>
-                        <input type="tel" id="staffPin" placeholder="••••" class="w-full h-16 bg-white border-2 border-gray-200 rounded-2xl mb-5 text-center text-4xl tracking-[1.5rem] font-black focus:border-yolkGreen outline-none">
-                        <button onclick="addVisit(${visits})" id="visitBtn" class="w-full h-16 bg-yolkGreen text-white rounded-2xl font-black text-xl shadow-xl uppercase tracking-widest">Collect Stamp</button>
+                    <div class="bg-yolkBg rounded-[2rem] p-8 border border-gray-100 mb-6">
+                        <div class="flex justify-center items-center gap-2 mb-4">
+                            <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Staff PIN</label>
+                            <button onclick="alert('Ask your server to enter their pin to collect stamp')" class="text-gray-300 text-xs hover:text-yolkGreen transition-colors"><i class="fa-solid fa-circle-info"></i></button>
+                        </div>
+                        <input type="password" id="staffPin" placeholder="••••" class="w-full h-16 bg-white border-2 border-gray-200 rounded-2xl mb-5 text-center text-4xl tracking-[1.5rem] font-black focus:border-yolkGreen outline-none transition-all">
+                        
+                        ${isNextReward ? `
+                            <div class="mb-4 py-2 bg-yolkGold bg-opacity-10 text-yolkGreen text-[10px] font-black uppercase tracking-widest border border-yolkGold border-opacity-20 rounded-xl">Next visit is a Free Reward! 🎁</div>
+                        ` : ''}
+                        
+                        <button onclick="handleVisit(${visits})" id="visitBtn" class="w-full h-16 bg-yolkGreen text-white rounded-2xl font-black text-lg shadow-xl uppercase tracking-widest active:scale-95 transition-transform">Collect Stamp</button>
                     </div>
+                    
+                    <button onclick="render('history')" class="text-yolkGreen font-black text-xs uppercase tracking-[0.2em] border-b-2 border-yolkGreen border-opacity-20 pb-1">View Visit History</button>
                 `;
-                
-                setTimeout(() => {
-                    document.getElementById('progressBar').style.width = progress + '%';
-                }, 200);
+                setTimeout(() => document.getElementById('pBar').style.width = progress + '%', 200);
+            }
+            // --- VIEW: HISTORY ---
+            else if (view === 'history') {
+                const logs = currentUser.history ? currentUser.history.split('|').filter(x => x) : [];
+                container.innerHTML = `
+                    <h2 class="text-2xl font-black text-yolkGreen mb-6 text-left">Visit History</h2>
+                    <div class="space-y-3 mb-8 max-h-80 overflow-y-auto pr-2 text-left">
+                        ${logs.length > 0 ? logs.reverse().map((log, index) => {
+                            const d = new Date(log);
+                            return `
+                                <div class="bg-gray-50 p-4 rounded-2xl flex justify-between items-center border border-gray-100">
+                                    <div>
+                                        <p class="text-xs font-black text-gray-400 uppercase">Visit #${logs.length - index}</p>
+                                        <p class="font-bold text-gray-700">${d.toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'})}</p>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-xs font-bold text-gray-400">${d.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'})}</p>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('') : '<p class="text-gray-400 py-10 text-center font-bold italic">No visits recorded yet.</p>'}
+                    </div>
+                    <button onclick="render('profile')" class="w-full h-16 bg-gray-100 text-gray-500 rounded-2xl font-black text-lg uppercase tracking-widest">Back to Profile</button>
+                `;
             }
         }
 
-        // 4. Registration Logic
-        async function registerUser() {
+        async function handleRegistration() {
             const name = document.getElementById('regName').value;
-            const phone = document.getElementById('regPhone').value;
+            const fullPhone = document.getElementById('isd').value + document.getElementById('regPhone').value;
             const btn = document.getElementById('regBtn');
 
-            if (!name || !phone) return alert("Please enter both Name and Phone.");
+            if (name.length < 3 || document.getElementById('regPhone').value.length < 10) return alert("Enter valid Name and Phone.");
 
-            btn.disabled = true;
-            btn.innerHTML = "Processing...";
+            btn.disabled = true; btn.innerHTML = "Verifying...";
 
-            try {
-                await fetch(`${API_URL}/id/${cardId}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: name, phone: phone })
-                });
-                location.reload();
-            } catch (err) {
-                alert("Registration failed. Please try again.");
-                btn.disabled = false;
-                btn.innerHTML = "Activate Now";
+            // LOGIC: Check if phone number already has 9 visits globally
+            const res = await fetch(`${API_URL}/search?phone=${encodeURIComponent(fullPhone)}`);
+            const globalUsers = await res.json();
+            const totalGlobalVisits = globalUsers.reduce((sum, u) => sum + (parseInt(u.visits) || 0), 0);
+
+            if (totalGlobalVisits >= 9) {
+                alert("This phone number has reached the maximum of 9 visits across all Yolkshire loyalty cards.");
+                btn.disabled = false; btn.innerHTML = "Complete Sign-Up";
+                return;
             }
+
+            await fetch(`${API_URL}/id/${cardId}`, {
+                method: 'PATCH',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ name: name, phone: fullPhone, visits: 0 })
+            });
+            render('success');
         }
 
-        // 5. Add Visit Logic
-        async function addVisit(currentVisits) {
+        async function handleVisit(currentVisits) {
             const pin = document.getElementById('staffPin').value;
             const btn = document.getElementById('visitBtn');
-
             if (pin !== "2010") return alert("Invalid Staff PIN");
 
-            btn.disabled = true;
-            btn.innerHTML = "Stamping...";
-
-            const newVisits = currentVisits + 1;
-            const today = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-
-            try {
-                await fetch(`${API_URL}/id/${cardId}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ visits: newVisits, last_visit: today })
-                });
-                location.reload();
-            } catch (err) {
-                alert("Update failed.");
-                btn.disabled = false;
-                btn.innerHTML = "Collect Stamp";
+            // LOGIC: No more than 1 visit per day
+            const todayStr = new Date().toLocaleDateString('en-IN');
+            if (currentUser.last_visit === todayStr) {
+                return alert("Oops! Only one visit allowed per day.");
             }
+
+            // LOGIC: Max 9 visits ever
+            if (currentVisits >= 9) {
+                return alert("Card Complete! You have reached the 9-visit limit.");
+            }
+
+            btn.disabled = true; btn.innerHTML = "Stamping...";
+
+            const now = new Date();
+            const logEntry = now.toISOString();
+            const updatedHistory = currentUser.history ? currentUser.history + "|" + logEntry : logEntry;
+
+            await fetch(`${API_URL}/id/${cardId}`, {
+                method: 'PATCH',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ 
+                    visits: currentVisits + 1, 
+                    last_visit: todayStr, 
+                    history: updatedHistory 
+                })
+            });
+            location.reload();
+        }
+
+        function showError(msg) {
+            document.getElementById('loader').classList.add('hidden');
+            document.getElementById('app').classList.remove('hidden');
+            document.getElementById('main-content').innerHTML = `
+                <div class="py-10">
+                    <div class="text-red-500 text-5xl mb-6">⚠️</div>
+                    <h2 class="text-2xl font-black text-gray-800 mb-2">Oops!</h2>
+                    <p class="text-gray-500 font-medium mb-8">${msg}</p>
+                    <button onclick="location.reload()" class="w-full h-16 bg-gray-100 text-gray-400 rounded-2xl font-black uppercase tracking-widest">Try Again</button>
+                </div>
+            `;
         }
 
         init();
