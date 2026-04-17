@@ -13,7 +13,9 @@ Run:          python generate_qrs.py
 Re-running is safe — existing PNGs are skipped; CSVs/XLSX always re-emit.
 """
 import csv
+from io import BytesIO
 from pathlib import Path
+from PIL import Image as PILImage
 from qrcode.main import QRCode
 from qrcode.constants import ERROR_CORRECT_H
 from qrcode.image.styledpil import StyledPilImage
@@ -86,34 +88,47 @@ with std_csv.open(encoding='utf-8') as f:
 
 for i, start in enumerate(range(0, len(rows), CHUNK_SIZE), 1):
     chunk_rows = rows[start:start + CHUNK_SIZE]
-
-    # CSV chunk (URL-based — works for InDesign/Marq; Canva treats URLs as plain text)
     chunk_csv = HERE / f"qrs-chunk-{i}.csv"
     with chunk_csv.open('w', newline='', encoding='utf-8') as f:
         w = csv.writer(f)
         w.writerow(header)
         w.writerows(chunk_rows)
+    print(f"  csv chunk {i}: rows {start+1}-{start+len(chunk_rows)} -> {chunk_csv.name}")
 
-    # XLSX chunk with embedded QR images in cells — required by Canva Bulk Create
+# XLSX chunks for Canva Bulk Create — separate, smaller chunks because Canva's
+# data table has a stricter limit on cells+images than CSV's row cap.
+# Only include card_id + qr (the image) to minimize cell count.
+XLSX_CHUNK_SIZE = 100
+XLSX_EMBED_PX   = 150
+
+# Clean stale XLSX outputs from previous runs (sizes/counts may have changed).
+for old in HERE.glob("qrs-xlsx-*.xlsx"):
+    old.unlink()
+for old in HERE.glob("qrs-chunk-*.xlsx"):
+    old.unlink()
+
+for i, start in enumerate(range(0, len(rows), XLSX_CHUNK_SIZE), 1):
+    chunk_rows = rows[start:start + XLSX_CHUNK_SIZE]
     wb = Workbook()
     ws = wb.active
     ws.title = "QRs"
-    ws.append(['card_id', 'qr', 'qr_url', 'url'])
-    ws.column_dimensions['A'].width = 12
-    ws.column_dimensions['B'].width = 16      # cell wide enough for the embedded image
-    ws.column_dimensions['C'].width = 60
-    ws.column_dimensions['D'].width = 60
+    ws.append(['card_id', 'qr'])
+    ws.column_dimensions['A'].width = 14
+    ws.column_dimensions['B'].width = 14
     for r, row in enumerate(chunk_rows, start=2):
-        card_id, qr_filename, qr_url, url = row
+        card_id = row[0]
+        qr_filename = row[1]
         ws.cell(row=r, column=1, value=card_id)
-        ws.cell(row=r, column=3, value=qr_url)
-        ws.cell(row=r, column=4, value=url)
-        ws.row_dimensions[r].height = 75      # ~100 px, fits the QR
-        img = XLImage(str(OUT_DIR / qr_filename))
-        img.width, img.height = 90, 90        # sized within the cell, not floating
+        ws.row_dimensions[r].height = 65
+        pil = PILImage.open(OUT_DIR / qr_filename)
+        pil.thumbnail((XLSX_EMBED_PX, XLSX_EMBED_PX), PILImage.LANCZOS)
+        buf = BytesIO()
+        pil.save(buf, format='PNG', optimize=True)
+        buf.seek(0)
+        img = XLImage(buf)
+        img.width, img.height = 75, 75
         img.anchor = f'B{r}'
         ws.add_image(img)
-    chunk_xlsx = HERE / f"qrs-chunk-{i}.xlsx"
+    chunk_xlsx = HERE / f"qrs-xlsx-{i:02d}.xlsx"
     wb.save(chunk_xlsx)
-
-    print(f"  chunk {i}: rows {start+1}-{start+len(chunk_rows)} -> {chunk_csv.name} + {chunk_xlsx.name}")
+    print(f"  xlsx chunk {i:02d}: rows {start+1}-{start+len(chunk_rows)} -> {chunk_xlsx.name}")

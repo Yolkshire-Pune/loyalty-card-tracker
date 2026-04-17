@@ -1,6 +1,6 @@
 # Generated QR output — regenerate with qr-gen/generate_qrs.py
 qr-gen/qrs/
-qr-gen/qrs-chunk-*.xlsx
+qr-gen/*.xlsx
 
 # Python
 __pycache__/
