@@ -1,6 +1,7 @@
 # Generated QR output — regenerate with qr-gen/generate_qrs.py
 qr-gen/qrs/
 qr-gen/*.xlsx
+qr-gen/print/
 
 # Python
 __pycache__/
