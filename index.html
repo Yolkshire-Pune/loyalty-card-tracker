@@ -7,6 +7,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
             theme: {
@@ -22,6 +25,9 @@
                         outline: '#707971',
                         yolkBg: '#f9fdfd',
                         warning: '#fcc314' // Gold for rewards
+                    },
+                    fontFamily: {
+                        sans: ['Poppins', 'ui-sans-serif', 'system-ui', 'sans-serif']
                     }
                 }
             }
@@ -112,7 +118,9 @@
 <body class="bg-yolkBg flex items-center justify-center p-4 min-h-screen text-onSurface font-medium antialiased">
 
     <div id="app" class="bg-surface w-full max-w-sm sm:max-w-md rounded-3xl yolk-shadow p-6 text-center hidden border border-gray-50 fade-in">
-        <img src="yolkshire-new-logo-fhd.png" alt="Yolkshire's Golden Yolk Loyalty Program" class="w-32 mx-auto mb-6">
+        <a href="https://yolkshire.com" target="_blank" rel="noopener" class="block w-32 mx-auto mb-6" aria-label="Visit yolkshire.com">
+            <img src="yolkshire-new-logo-fhd.png" alt="Yolkshire's Golden Yolk Loyalty Program" class="w-full block">
+        </a>
         <div id="main-content"></div>
     </div>
 
@@ -254,10 +262,10 @@
         // --- DATE / GREETING HELPERS ---
         function getGreeting(firstName) {
             const hr = parseInt(new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', hour12: false }).format(new Date()));
-            if (hr >= 6  && hr < 11) return { headline: 'Good Morning!',                                  tagline: 'Ready for your morning protein fix?' };
+            if (hr >= 5  && hr < 11) return { headline: `Good morning, ${firstName}!`,                    tagline: 'Ready for your morning protein fix?' };
             if (hr >= 11 && hr < 16) return { headline: `Egg-cellent choice for lunch, ${firstName}!`,    tagline: 'Your stamp awaits.' };
-            if (hr >= 16 && hr < 22) return { headline: 'Winding down with the Golden Yolk?',             tagline: `Welcome back, ${firstName}.` };
-            return                         { headline: `Hi, ${firstName}!`,                               tagline: 'Great to see you again.' };
+            if (hr >= 16 && hr < 21) return { headline: `Winding down, ${firstName}?`,                    tagline: 'Perfect time for a Golden Yolk visit.' };
+            return                         { headline: `Late-night cravings, ${firstName}?`,              tagline: 'The Golden Yolk has your back.' };
         }
         function getJoinDate(user) {
             if (!user.history) return '—';
@@ -383,11 +391,11 @@
             setTimeout(() => confetti({ particleCount: 60, angle: 60,  spread: 55, origin: { x: 0 }, colors }), 250);
             setTimeout(() => confetti({ particleCount: 60, angle: 120, spread: 55, origin: { x: 1 }, colors }), 400);
         }
-        function celebrateMilestone(n) {
+        function celebrateMilestone(rewardIdx) {
             return new Promise(resolve => {
                 const el = document.getElementById('milestone');
                 const label = el.querySelector('[data-reward-num]');
-                if (label) label.textContent = `Reward ${n / 3}/3 Unlocked`;
+                if (label) label.textContent = `Reward ${rewardIdx}/3 Redeemed`;
                 el.classList.remove('hidden');
                 void el.offsetWidth;
                 el.classList.add('milestone-active');
@@ -451,9 +459,9 @@
             if (!currentUser.name && view === 'default') {
                 container.innerHTML = `
                     <div class="p-6">
-                        <p class="text-[10px] uppercase tracking-[0.25em] text-primary font-bold mb-2">${BRAND_NAME}</p>
-                        <p class="text-xs uppercase tracking-[0.3em] text-onSurfaceVariant font-bold mb-3">Scan Detected</p>
-                        <h1 class="text-2xl font-semibold text-primary mb-12">#${escapeHTML(cardId)}</h1>
+                        <p class="text-sm font-semibold text-primary mb-6">${BRAND_NAME}</p>
+                        <p class="text-xs uppercase tracking-[0.2em] text-onSurfaceVariant font-semibold mb-3">Scan Detected</p>
+                        <h1 class="text-2xl font-bold text-primary mb-12">#${escapeHTML(cardId)}</h1>
                         ${PrimaryButton("Activate Card", "render('register')")}
                     </div>`;
             }
@@ -518,9 +526,9 @@
                 container.innerHTML = `
                     <div class="py-10">
                         <div class="w-16 h-16 bg-green-100 text-primary rounded-full flex items-center justify-center mx-auto mb-6 text-2xl">✓</div>
-                        <h2 class="text-2xl font-semibold text-gray-800 mb-2 tracking-tight">Welcome aboard!</h2>
-                        <p class="text-sm text-gray-500 mb-2 font-medium">Your loyalty card #${escapeHTML(currentUser.id)} is now active.</p>
-                        <p class="text-[10px] uppercase tracking-[0.2em] text-primary font-bold mb-10">${BRAND_NAME}</p>
+                        <h2 class="text-2xl font-bold text-gray-800 mb-2 tracking-tight">Welcome aboard!</h2>
+                        <p class="text-sm text-gray-500 mb-3 font-medium">Your loyalty card #${escapeHTML(currentUser.id)} is now active.</p>
+                        <p class="text-sm font-semibold text-primary mb-10">${BRAND_NAME}</p>
                         ${PrimaryButton("Go to Profile", "location.reload()")}
                     </div>
                 `;
@@ -536,7 +544,7 @@
                 const isNextReward = !isRewardEarned && !isCardComplete && (visits + 1) % 3 === 0;
 
                 const profileHeader = `
-                    <p class="text-[10px] uppercase tracking-[0.25em] text-primary font-bold mb-1">${BRAND_NAME}</p>
+                    <p class="text-sm font-semibold text-primary mb-5">${BRAND_NAME}</p>
                     <h2 class="text-xl font-bold text-gray-800 mb-1 tracking-tight leading-tight">${escapeHTML(g.headline)}</h2>
                     <p class="text-sm text-onSurfaceVariant font-medium mb-7">${escapeHTML(g.tagline)}</p>
 
@@ -700,8 +708,15 @@
             if (btn) btn.disabled = true;
             const reenable = () => { if (btn) btn.disabled = false; };
 
-            const willBe = currentVisits + 1;
-            console.log(`[DEBUG] handleVisit: currentVisits=${currentVisits} → newVisitCount=${willBe}, isRewardStamp=${willBe % 3 === 0}, DB user.visits=${currentUser.visits}`);
+            const newVisitCount = currentVisits + 1;
+            // Celebration fires on the stamp AFTER a reward was earned (confirms redemption),
+            // plus on the final stamp itself (card-complete moment, no next visit available).
+            const isPostRewardStamp = currentVisits > 0 && currentVisits % 3 === 0; // stamps 4, 7
+            const isFinalStamp = newVisitCount === 9;                                // stamp 9
+            const shouldCelebrate = isPostRewardStamp || isFinalStamp;
+            const rewardIdx = isFinalStamp ? 3 : (isPostRewardStamp ? currentVisits / 3 : null);
+
+            console.log(`[DEBUG] handleVisit: currentVisits=${currentVisits} → newVisitCount=${newVisitCount}, postReward=${isPostRewardStamp}, final=${isFinalStamp}, rewardIdx=${rewardIdx}`);
 
             const pin = document.getElementById('staffPin').value;
             if (pin !== "2010") {
@@ -724,20 +739,22 @@
                 return showDialog("Card Complete", "Guest has reached the maximum of 9 visits on this Golden Yolk card. Please generate a new card number.");
             }
 
-            const newVisitCount = currentVisits + 1;
-            if (newVisitCount % 3 === 0) {
+            if (shouldCelebrate) {
+                const message = isFinalStamp
+                    ? "Final stamp of the card! Did the guest redeem today's Free Reward? Stamping will proceed regardless."
+                    : "Welcome back! Did the guest redeem the Free Reward from their last visit? Stamping will proceed regardless.";
                 ConfirmDialog(
                     "Free Reward 🎁",
-                    `Visit #${newVisitCount} earns a Free Reward. Did the guest redeem a reward today? (Stamping will proceed regardless.)`,
-                    () => proceedStamp(newVisitCount),
-                    () => proceedStamp(newVisitCount)
+                    message,
+                    () => proceedStamp(newVisitCount, rewardIdx),
+                    () => proceedStamp(newVisitCount, rewardIdx)
                 );
             } else {
-                proceedStamp(newVisitCount);
+                proceedStamp(newVisitCount, null);
             }
         }
 
-        async function proceedStamp(newVisitCount) {
+        async function proceedStamp(newVisitCount, rewardIdx) {
             const btn = document.getElementById('handleVisitBtn');
             if (btn) btn.innerHTML = "Stamping...";
 
@@ -757,8 +774,8 @@
                     })
                 });
 
-                if (newVisitCount % 3 === 0) {
-                    await celebrateMilestone(newVisitCount);
+                if (rewardIdx != null) {
+                    await celebrateMilestone(rewardIdx);
                 }
                 location.reload();
             } catch (err) { showError("Database connection failed. Visit not stamped."); }
