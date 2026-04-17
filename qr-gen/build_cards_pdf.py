@@ -24,22 +24,36 @@ OUT_DIR.mkdir(exist_ok=True)
 # Green panel sits on the right, "CARD ID" label measured at (214.4, 96.2)-(239.9, 103.6).
 # "THE GOLDEN YOLK CARD" title starts at y~110; QR placeholder sits above "CARD ID" label.
 
-# Box where the per-card QR image goes — tweak if misaligned with the template's
-# placeholder QR after viewing the sample.
-QR_RECT = fitz.Rect(190, 20, 258, 88)      # ~68 pt square, centered in the green panel
+# Box where the per-card QR image goes — shifted right+down from initial estimate
+# to center it in the green panel.
+QR_RECT = fitz.Rect(198, 25, 266, 93)      # 68x68 pt
 
-# Box to place the actual "YSLC###" text.
-# Strategy: redact (paint over) the existing "CARD ID" label in panel green,
-# then write the real card ID there in white, matching the label's styling.
-CARD_ID_LABEL_RECT = fitz.Rect(210, 94, 245, 106)  # the "CARD ID" text from probe
-CARD_ID_TEXT_RECT  = fitz.Rect(200, 93,  258, 107) # slightly wider for "YSLC001"
+# Box covering the existing "CARD ID" label so we can overlay the real ID.
+CARD_ID_LABEL_RECT = fitz.Rect(212, 95, 243, 105)
+CARD_ID_TEXT_RECT  = fitz.Rect(200, 93,  258, 107)
 
-PANEL_COLOR = (52/255, 87/255, 54/255)     # #345736 dark green
 TEXT_COLOR  = (1, 1, 1)                    # white
+
+
+def sample_panel_color(page: fitz.Page) -> tuple[float, float, float]:
+    """Sample the green panel's rendered RGB at a clean interior pixel —
+    more reliable than hard-coding #345736 because Canva's export may use a
+    slightly different device color than the source hex."""
+    clip = fitz.Rect(255, 80, 265, 90)     # safely inside the panel, between QR and title
+    pix = page.get_pixmap(clip=clip, dpi=144, colorspace=fitz.csRGB)
+    _, rgb_bytes = pix.color_topusage()    # most common color in the region
+    r, g, b = rgb_bytes[0], rgb_bytes[1], rgb_bytes[2]
+    return (r / 255, g / 255, b / 255)
 
 
 def build(sample: bool) -> None:
     tpl = fitz.open(TEMPLATE)
+
+    # Sample the real panel color from the template (once) — any slight
+    # mismatch with #345736 leaves a visible rectangle around the card ID.
+    panel_color = sample_panel_color(tpl[1])
+    print(f"  sampled panel color: RGB({int(panel_color[0]*255)}, "
+          f"{int(panel_color[1]*255)}, {int(panel_color[2]*255)})")
 
     # Front: single page, identical for all cards.
     front = fitz.open()
@@ -62,9 +76,16 @@ def build(sample: bool) -> None:
         backs.insert_pdf(tpl, from_page=1, to_page=1)
         page = backs[-1]
 
-        # 1. Paint over the existing "CARD ID" label text in the panel color.
-        page.add_redact_annot(CARD_ID_LABEL_RECT, fill=PANEL_COLOR)
-        page.apply_redactions()
+        # 1. Paint a solid panel-colored rect over the "CARD ID" label.
+        #    draw_rect + overlay renders with the sampled color directly, no
+        #    redaction-colour-space weirdness.
+        page.draw_rect(
+            CARD_ID_LABEL_RECT,
+            color=panel_color,
+            fill=panel_color,
+            width=0,
+            overlay=True,
+        )
 
         # 2. Drop the per-card QR PNG over the vector placeholder QR.
         page.insert_image(QR_RECT, filename=str(qr_png))
