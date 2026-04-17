@@ -71,3 +71,19 @@ with std_csv.open('w', newline='', encoding='utf-8') as fs, \
 
 print(f"Done — {generated} new, {skipped} skipped. PNGs: {OUT_DIR.resolve()}")
 print(f"       CSVs: {std_csv.name}, {id_csv.name}")
+
+# Canva Bulk Create caps at 300 rows per run — emit chunked copies of qrs.csv.
+CHUNK_SIZE = 300
+with std_csv.open(encoding='utf-8') as f:
+    reader = csv.reader(f)
+    header = next(reader)
+    rows = list(reader)
+
+for i, start in enumerate(range(0, len(rows), CHUNK_SIZE), 1):
+    chunk_rows = rows[start:start + CHUNK_SIZE]
+    chunk_path = HERE / f"qrs-chunk-{i}.csv"
+    with chunk_path.open('w', newline='', encoding='utf-8') as f:
+        w = csv.writer(f)
+        w.writerow(header)
+        w.writerows(chunk_rows)
+    print(f"  chunk {i}: rows {start+1}-{start+len(chunk_rows)} -> {chunk_path.name}")
