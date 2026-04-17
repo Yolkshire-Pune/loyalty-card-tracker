@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Yolkshire Golden Yolk</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script>
         tailwind.config = {
@@ -32,6 +33,80 @@
         .yolk-shadow { box-shadow: 0 16px 40px rgba(13, 106, 55, 0.08); }
         .fade-in { animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- Dialog transitions (M3 emphasized easing) --- */
+        #dialog { transition: opacity 0.25s cubic-bezier(0.2, 0, 0, 1); opacity: 0; pointer-events: none; }
+        #dialog .dialog-panel {
+            transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1), opacity 0.25s cubic-bezier(0.2, 0, 0, 1);
+            transform: scale(0.92) translateY(8px); opacity: 0;
+        }
+        #dialog.dialog-open { opacity: 1; pointer-events: auto; }
+        #dialog.dialog-open .dialog-panel { transform: scale(1) translateY(0); opacity: 1; }
+
+        /* --- Skeleton shimmer --- */
+        @keyframes shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
+        .skeleton {
+            background: linear-gradient(90deg, #e1e5df 0%, #f0f2ef 50%, #e1e5df 100%);
+            background-size: 800px 100%;
+            animation: shimmer 1.4s linear infinite;
+            border-radius: 12px;
+        }
+
+        /* --- PIN dot bounce --- */
+        @keyframes dotBounce { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
+        .pin-dot { transition: background-color 0.15s ease-out; }
+        .pin-dot.filled { background: #0d6a37; animation: dotBounce 0.22s ease-out; }
+
+        /* --- Hero reward state --- */
+        .reward-glow {
+            box-shadow: 0 0 0 4px rgba(252, 195, 20, 0.15), 0 20px 50px rgba(252, 195, 20, 0.35);
+            animation: rewardPulse 2.5s ease-in-out infinite;
+        }
+        @keyframes rewardPulse {
+            0%, 100% { box-shadow: 0 0 0 4px rgba(252, 195, 20, 0.15), 0 20px 50px rgba(252, 195, 20, 0.35); }
+            50%      { box-shadow: 0 0 0 8px rgba(252, 195, 20, 0.25), 0 25px 60px rgba(252, 195, 20, 0.50); }
+        }
+        @keyframes giftBounce {
+            0%, 100% { transform: translateY(0) rotate(-4deg); }
+            50%      { transform: translateY(-6px) rotate(4deg); }
+        }
+        .gift-wiggle { display: inline-block; animation: giftBounce 1.4s ease-in-out infinite; transform-origin: center bottom; }
+
+        /* --- History scroll fade edges --- */
+        .history-scroll {
+            mask-image: linear-gradient(to bottom, transparent 0, #000 16px, #000 calc(100% - 24px), transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 16px, #000 calc(100% - 24px), transparent 100%);
+        }
+
+        /* --- Milestone overlay: egg crack + yolk pop --- */
+        #milestone { transition: opacity 0.3s ease-out; }
+        .egg-shell { width: 120px; height: 160px; position: relative; margin: 0 auto; }
+        .egg-half {
+            position: absolute; left: 0; width: 120px; height: 78px;
+            background: linear-gradient(135deg, #fff8e0 0%, #fce9a1 65%, #f5d67a 100%);
+            box-shadow: inset -6px 0 16px rgba(200, 150, 20, 0.18), 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        .egg-top { top: 0; border-radius: 60px 60px 8px 8px; transform-origin: 50% 100%; }
+        .egg-btm { bottom: 0; border-radius: 8px 8px 60px 60px; transform-origin: 50% 0%; }
+        .milestone-active .egg-top { animation: eggTopCrack 0.7s cubic-bezier(0.4, 0, 0.2, 1) 0.2s forwards; }
+        .milestone-active .egg-btm { animation: eggBtmCrack 0.7s cubic-bezier(0.4, 0, 0.2, 1) 0.2s forwards; }
+        @keyframes eggTopCrack { 0% { transform: rotate(0) translate(0, 0); } 100% { transform: rotate(-35deg) translate(-50px, -30px); } }
+        @keyframes eggBtmCrack { 0% { transform: rotate(0) translate(0, 0); } 100% { transform: rotate(35deg) translate(50px, 30px); } }
+
+        .yolk-badge {
+            position: absolute; top: 50%; left: 50%; width: 110px; height: 110px; border-radius: 50%;
+            background: radial-gradient(circle at 35% 30%, #ffd94a 0%, #fcc314 55%, #d79908 100%);
+            box-shadow: 0 0 40px rgba(252, 195, 20, 0.7), inset -8px -8px 16px rgba(200, 130, 0, 0.3);
+            display: flex; align-items: center; justify-content: center;
+            color: #0d6a37; font-weight: 900; font-size: 14px; letter-spacing: 0.05em; text-align: center;
+            transform: translate(-50%, -50%) scale(0); opacity: 0;
+        }
+        .milestone-active .yolk-badge { animation: yolkPop 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.7s forwards; }
+        @keyframes yolkPop {
+            0%   { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+            60%  { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
     </style>
 </head>
 <body class="bg-yolkBg flex items-center justify-center p-4 min-h-screen text-onSurface font-medium antialiased">
@@ -41,36 +116,124 @@
         <div id="main-content"></div>
     </div>
 
-    <div id="loader" class="flex flex-col items-center">
-        <div class="animate-spin rounded-full h-10 w-10 border-t-4 border-primary border-opacity-20 border-t-primary"></div>
+    <!-- Skeleton Loader (profile-shaped) -->
+    <div id="loader" class="bg-surface w-full max-w-sm sm:max-w-md rounded-3xl yolk-shadow p-6 border border-gray-50">
+        <div class="skeleton w-32 h-10 mx-auto mb-6"></div>
+        <div class="skeleton h-3 w-24 mx-auto mb-2"></div>
+        <div class="skeleton h-6 w-3/4 mx-auto mb-2"></div>
+        <div class="skeleton h-3 w-1/2 mx-auto mb-6"></div>
+        <div class="skeleton h-5 w-full rounded-full mb-6"></div>
+        <div class="flex gap-4 mb-6 items-center">
+            <div class="skeleton h-16 w-1/3"></div>
+            <div class="grid grid-cols-2 gap-2 flex-1">
+                <div class="skeleton h-8"></div>
+                <div class="skeleton h-8"></div>
+                <div class="skeleton h-8"></div>
+                <div class="skeleton h-8"></div>
+            </div>
+        </div>
+        <div class="skeleton h-40 w-full rounded-3xl"></div>
     </div>
 
+    <!-- Custom Dialog (single- or two-button) -->
     <div id="dialog" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden" onclick="closeDialog()">
-        <div class="bg-surface rounded-2xl p-6 yolk-shadow max-w-xs w-full fade-in" onclick="event.stopPropagation()">
+        <div class="dialog-panel bg-surface rounded-2xl p-6 yolk-shadow max-w-xs w-full" onclick="event.stopPropagation()">
             <h3 id="dialog-title" class="text-xl font-bold mb-3">System Message</h3>
             <p id="dialog-message" class="text-sm text-gray-600 mb-6 font-medium"></p>
-            <button onclick="closeDialog()" class="w-full bg-surfaceVariant text-onSurfaceVariant rounded-full py-3 font-semibold text-sm uppercase tracking-wider">OK</button>
+            <div class="flex gap-2">
+                <button id="dialog-cancel-btn" class="flex-1 bg-surfaceVariant text-onSurfaceVariant rounded-full py-3 font-semibold text-sm uppercase tracking-wider hidden">Cancel</button>
+                <button id="dialog-confirm-btn" class="flex-1 bg-surfaceVariant text-onSurfaceVariant rounded-full py-3 font-semibold text-sm uppercase tracking-wider">OK</button>
+            </div>
         </div>
     </div>
 
+    <!-- Milestone Celebration Overlay -->
+    <div id="milestone" class="fixed inset-0 z-50 flex flex-col items-center justify-center p-6 hidden cursor-pointer" style="background: rgba(13, 106, 55, 0.95);">
+        <div class="egg-shell mb-8">
+            <div class="egg-half egg-top"></div>
+            <div class="egg-half egg-btm"></div>
+            <div class="yolk-badge">Yolk-<br>yeah!</div>
+        </div>
+        <h2 class="text-white text-3xl font-black tracking-tight mb-2 text-center">FREE REWARD UNLOCKED</h2>
+        <p class="text-warning text-sm font-bold uppercase tracking-[0.2em]" data-reward-num>Reward 1/3 Unlocked</p>
+        <p class="text-white/70 text-xs font-medium mt-10">Tap anywhere to continue</p>
+    </div>
+
     <script>
+        // --- CONSTANTS ---
         const API_URL = "https://sheetdb.io/api/v1/im2qg2cit3cco";
+        const BUSINESS_WHATSAPP = '+918446536065';
+        const PHONE_RULES = { '+91': 10, '+1': 10, '+44': 10, '+971': 9 };
+        // ⚠️ [TEST FLAG] Set to true for production logic
+        const ENABLE_DAILY_LIMIT_CHECK = false;
+
+        // --- STATE ---
         const urlParams = new URLSearchParams(window.location.search);
         const cardId = urlParams.get('id');
         let currentUser = null;
+        let registering = false;
+        let _dialogOnCancel = null;
 
-        // ⚠️ [TEST FLAG] Set to true for production logic
-        const ENABLE_DAILY_LIMIT_CHECK = false; 
+        // --- SANITIZATION HELPERS ---
+        function escapeHTML(s) {
+            return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        }
+        function sanitizeName(raw) {
+            const t = (raw || '').trim().replace(/\s+/g, ' ');
+            return /^[A-Za-z. ]{2,50}$/.test(t) ? t : null;
+        }
+        function validatePhone(isd, raw) {
+            const digits = (raw || '').replace(/\D/g, '');
+            const expected = PHONE_RULES[isd] ?? 10;
+            if (digits.length !== expected) return { ok: false, reason: `Phone must be ${expected} digits for ${isd}.` };
+            return { ok: true, digits };
+        }
 
-        // --- COMPONENT FUNCTIONS (For consistency) ---
+        // --- DATE / GREETING HELPERS ---
+        function getGreeting(firstName) {
+            const hr = parseInt(new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', hour12: false }).format(new Date()));
+            if (hr >= 6  && hr < 11) return { headline: 'Good Morning!',                                  tagline: 'Ready for your morning protein fix?' };
+            if (hr >= 11 && hr < 16) return { headline: `Egg-cellent choice for lunch, ${firstName}!`,    tagline: 'Your stamp awaits.' };
+            if (hr >= 16 && hr < 22) return { headline: 'Winding down with the Golden Yolk?',             tagline: `Welcome back, ${firstName}.` };
+            return                         { headline: `Hi, ${firstName}!`,                               tagline: 'Great to see you again.' };
+        }
+        function getJoinDate(user) {
+            if (!user.history) return '—';
+            try {
+                const first = user.history.split('|').filter(Boolean)[0];
+                const d = new Date(first);
+                if (isNaN(d)) return '—';
+                return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+            } catch { return '—'; }
+        }
+        function groupLogsByMonth(logs) {
+            const parsed = [];
+            logs.forEach((iso, i) => {
+                try {
+                    const d = new Date(iso);
+                    if (isNaN(d)) return;
+                    parsed.push({ d, visitNumber: i + 1, isMilestone: (i + 1) % 3 === 0 });
+                } catch {}
+            });
+            parsed.reverse(); // newest first
+            const groups = [];
+            let current = null;
+            for (const p of parsed) {
+                const label = p.d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+                if (!current || current.label !== label) {
+                    current = { label, items: [] };
+                    groups.push(current);
+                }
+                current.items.push(p);
+            }
+            return groups;
+        }
 
-        // M3 style filled primary button (green)
+        // --- COMPONENT FACTORIES ---
         const PrimaryButton = (label, onClick) => `<button onclick="${onClick}" id="${onClick.split('(')[0]}Btn" class="w-full bg-primary text-onPrimary rounded-full py-4 font-bold text-sm uppercase tracking-wider active:scale-95 transition-transform disabled:bg-surfaceVariant disabled:text-onSurfaceVariant disabled:opacity-38">${label}</button>`;
-        
-        // M3 style tonal secondary button (gray)
+
         const SecondaryButton = (label, onClick) => `<button onclick="${onClick}" class="w-full bg-surfaceVariant text-onSurfaceVariant rounded-full py-4 font-bold text-sm uppercase tracking-wider">${label}</button>`;
 
-        // M3 Outlined Text Field
         const OutlinedTextField = (id, label, placeholder, type = 'text', additionalHTML = '') => `
             <div class="mb-4 text-left">
                 <label for="${id}" class="block text-xs font-semibold text-onSurfaceVariant mb-2 ml-1">${label}</label>
@@ -80,32 +243,136 @@
                 </div>
             </div>`;
 
-        // Profile stats card (Card ID, Phone, Last Visit)
         const ProfileStat = (label, value) => `
             <div class="flex flex-col text-left">
                 <p class="text-[9px] font-bold text-onSurfaceVariant uppercase tracking-widest leading-snug">${label}</p>
                 <p class="text-xs font-bold text-onSurface">${value}</p>
             </div>`;
 
-        // History list item card
-        const HistoryItem = (d, visits, index) => `
-            <div class="bg-surfaceVariant p-4 rounded-xl border border-gray-100 flex justify-between items-center text-left">
-                <div>
-                    <p class="text-xs font-bold text-onSurfaceVariant uppercase">Visit #${visits - index}</p>
-                    <p class="font-bold text-onSurface">${d.toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'})}</p>
-                </div>
-                <div class="text-right">
-                    <p class="text-xs font-semibold text-onSurfaceVariant">${d.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'})}</p>
-                </div>
-            </div>`;
+        const HistoryItem = (d, visitNumber, isMilestone) => {
+            const baseClasses = isMilestone
+                ? 'bg-warning/15 border border-warning/40'
+                : 'bg-surfaceVariant border border-gray-100';
+            const icon = isMilestone ? '<i class="fa-solid fa-gift text-warning text-sm mr-1.5"></i>' : '';
+            const chip = isMilestone
+                ? '<span class="ml-2 text-[9px] font-black text-warning uppercase tracking-widest bg-warning/10 px-1.5 py-0.5 rounded-md border border-warning/30">Reward</span>'
+                : '';
+            return `
+                <div class="${baseClasses} p-4 rounded-xl flex justify-between items-center text-left">
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs font-bold text-onSurfaceVariant uppercase flex items-center">${icon}Visit #${visitNumber}${chip}</p>
+                        <p class="font-bold text-onSurface">${d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xs font-semibold text-onSurfaceVariant">${d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</p>
+                    </div>
+                </div>`;
+        };
 
+        const MonthHeader = (label) => `
+            <div class="sticky top-0 bg-yolkBg/95 backdrop-blur-sm py-2 px-1 text-[10px] font-black uppercase tracking-[0.2em] text-primary z-10">${label}</div>`;
+
+        // --- DIALOG CONTROLLER ---
+        function showDialog(title, message, opts = {}) {
+            const { confirmLabel = 'OK', cancelLabel = null, onConfirm = null, onCancel = null } = opts;
+            const dialog = document.getElementById('dialog');
+            const confirmBtn = document.getElementById('dialog-confirm-btn');
+            const cancelBtn = document.getElementById('dialog-cancel-btn');
+
+            document.getElementById('dialog-title').textContent = title;
+            document.getElementById('dialog-message').textContent = message;
+
+            if (cancelLabel) {
+                cancelBtn.textContent = cancelLabel;
+                cancelBtn.classList.remove('hidden');
+                confirmBtn.className = 'flex-1 bg-primary text-onPrimary rounded-full py-3 font-semibold text-sm uppercase tracking-wider active:scale-95 transition-transform';
+            } else {
+                cancelBtn.classList.add('hidden');
+                confirmBtn.className = 'flex-1 bg-surfaceVariant text-onSurfaceVariant rounded-full py-3 font-semibold text-sm uppercase tracking-wider active:scale-95 transition-transform';
+            }
+            confirmBtn.textContent = confirmLabel;
+
+            _dialogOnCancel = onCancel; // backdrop-dismiss fires this
+            confirmBtn.onclick = () => { _dialogOnCancel = null; closeDialog(); if (onConfirm) onConfirm(); };
+            cancelBtn.onclick  = () => { _dialogOnCancel = null; closeDialog(); if (onCancel)  onCancel();  };
+
+            dialog.classList.remove('hidden');
+            void dialog.offsetWidth; // force reflow so transition runs from closed→open
+            dialog.classList.add('dialog-open');
+        }
+
+        function closeDialog() {
+            const dialog = document.getElementById('dialog');
+            const pending = _dialogOnCancel;
+            _dialogOnCancel = null;
+            dialog.classList.remove('dialog-open');
+            setTimeout(() => dialog.classList.add('hidden'), 300);
+            if (pending) pending();
+        }
+
+        const ConfirmDialog = (title, msg, onYes, onNo) =>
+            showDialog(title, msg, { confirmLabel: 'Yes, Redeemed', cancelLabel: 'No, Skip', onConfirm: onYes, onCancel: onNo });
+
+        // --- CELEBRATION ---
+        function fireConfetti() {
+            if (typeof confetti !== 'function') return;
+            const colors = ['#fcc314', '#0d6a37', '#ffffff'];
+            confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 }, colors });
+            setTimeout(() => confetti({ particleCount: 60, angle: 60,  spread: 55, origin: { x: 0 }, colors }), 250);
+            setTimeout(() => confetti({ particleCount: 60, angle: 120, spread: 55, origin: { x: 1 }, colors }), 400);
+        }
+        function celebrateMilestone(n) {
+            return new Promise(resolve => {
+                const el = document.getElementById('milestone');
+                const label = el.querySelector('[data-reward-num]');
+                if (label) label.textContent = `Reward ${n / 3}/3 Unlocked`;
+                el.classList.remove('hidden');
+                void el.offsetWidth;
+                el.classList.add('milestone-active');
+                fireConfetti();
+                setTimeout(fireConfetti, 900);
+
+                let done = false;
+                const finish = () => {
+                    if (done) return;
+                    done = true;
+                    el.classList.add('hidden');
+                    el.classList.remove('milestone-active');
+                    el.removeEventListener('click', finish);
+                    resolve();
+                };
+                el.addEventListener('click', finish);
+                setTimeout(finish, 2600);
+            });
+        }
+
+        // --- FEATURE HELPERS ---
+        function openWhatsAppFeedback(visits) {
+            const suffix = ['st', 'nd', 'rd'][visits - 1] || 'th';
+            const msg = encodeURIComponent(`Hi Yolkshire, I just finished my ${visits}${suffix} visit and wanted to say...`);
+            window.open(`https://wa.me/${BUSINESS_WHATSAPP.replace(/\D/g, '')}?text=${msg}`, '_blank');
+        }
+        function updatePinDots(val) {
+            const input = document.getElementById('staffPin');
+            const digits = (val || '').replace(/\D/g, '').slice(0, 4);
+            if (digits !== val && input) input.value = digits;
+            const dots = document.querySelectorAll('.pin-dot');
+            dots.forEach((d, i) => {
+                const shouldFill = i < digits.length;
+                const wasFilled = d.classList.contains('filled');
+                if (shouldFill && !wasFilled) {
+                    d.classList.add('filled');
+                } else if (!shouldFill && wasFilled) {
+                    d.classList.remove('filled');
+                }
+            });
+        }
 
         // --- MAIN APP LOGIC ---
-
         async function init() {
             if (!cardId) return showError("Invalid QR Code.");
             try {
-                const res = await fetch(`${API_URL}/search?id=${cardId}`);
+                const res = await fetch(`${API_URL}/search?id=${encodeURIComponent(cardId)}`);
                 const data = await res.json();
                 if (data.length === 0) return showError("Card ID not found in database.");
                 currentUser = data[0];
@@ -123,21 +390,21 @@
                 container.innerHTML = `
                     <div class="p-6">
                         <p class="text-xs uppercase tracking-[0.3em] text-onSurfaceVariant font-bold mb-3">Scan Detected</p>
-                        <h1 class="text-headline-small font-semibold text-primary mb-12">#${cardId}</h1>
+                        <h1 class="text-2xl font-semibold text-primary mb-12">#${escapeHTML(cardId)}</h1>
                         ${PrimaryButton("Activate Card", "render('register')")}
                     </div>`;
-            } 
+            }
             // --- VIEW: REGISTER ---
             else if (view === 'register') {
                 const isdHTML = `
                     <select id="isd" class="border border-outline rounded-xl px-2.5 font-bold text-sm outline-none bg-white">
                         <option value="+91" selected>🇮🇳 +91</option>
-                        <option value="+1">🇺🇺🇸 +1</option>
+                        <option value="+1">🇺🇸 +1</option>
                         <option value="+44">🇬🇧 +44</option>
                         <option value="+971">🇦🇪 +971</option>
                     </select>`;
                 container.innerHTML = `
-                    <h2 class="text-title-large font-semibold text-primary mb-6">Join Golden Yolk Loyalty</h2>
+                    <h2 class="text-xl font-semibold text-primary mb-6">Join Golden Yolk Loyalty</h2>
                     ${OutlinedTextField("regName", "Full Name", "John Doe")}
                     ${OutlinedTextField("regPhone", "Phone Number", "9876543210", "tel", isdHTML)}
                     <div class="mt-8">${PrimaryButton("Complete Activation", "handleRegistration()")}</div>
@@ -148,8 +415,8 @@
                 container.innerHTML = `
                     <div class="py-10">
                         <div class="w-16 h-16 bg-green-100 text-primary rounded-full flex items-center justify-center mx-auto mb-6 text-2xl">✓</div>
-                        <h2 class="text-headline-small font-semibold text-gray-800 mb-2 tracking-tight">Congratulations!</h2>
-                        <p class="text-body-medium text-gray-500 mb-10 font-medium">Your loyalty card #${currentUser.id} is now active.</p>
+                        <h2 class="text-2xl font-semibold text-gray-800 mb-2 tracking-tight">Congratulations!</h2>
+                        <p class="text-sm text-gray-500 mb-10 font-medium">Your loyalty card #${escapeHTML(currentUser.id)} is now active.</p>
                         ${PrimaryButton("Go to Profile", "location.reload()")}
                     </div>
                 `;
@@ -158,43 +425,68 @@
             else if (view === 'default' || view === 'profile') {
                 const visits = parseInt(currentUser.visits) || 0;
                 const progress = (visits / 9) * 100;
-                const isNextReward = (visits + 1) % 3 === 0;
+                const firstName = escapeHTML((currentUser.name || '').split(' ')[0]);
+                const g = getGreeting(firstName);
+                const isRewardEarned = visits > 0 && visits % 3 === 0;
+                const isNextReward = !isRewardEarned && (visits + 1) % 3 === 0 && visits < 9;
+
+                const rewardCardClasses = isRewardEarned
+                    ? 'bg-gradient-to-br from-warning/25 to-warning/5 border-2 border-warning reward-glow'
+                    : 'bg-surfaceVariant bg-opacity-30 border border-gray-100';
+
+                const heroBanner = isRewardEarned ? `
+                    <div class="mb-5 text-center">
+                        <i class="fa-solid fa-gift gift-wiggle text-warning text-5xl mb-3"></i>
+                        <h3 class="text-lg font-black text-primary tracking-tight leading-tight">YOU'VE EARNED<br>A FREE REWARD</h3>
+                        <p class="text-xs text-onSurfaceVariant font-semibold mt-2">Show this screen to your server</p>
+                    </div>
+                ` : '';
+
+                const nextRewardPill = isNextReward ? `
+                    <div class="mb-4 py-1.5 px-3 bg-warning bg-opacity-10 text-primary text-[10px] font-black uppercase tracking-widest border border-warning border-opacity-20 rounded-lg">Stamp #${visits + 1} unlocks a Free Reward 🎁</div>
+                ` : '';
 
                 container.innerHTML = `
                     <p class="text-[10px] uppercase tracking-[0.25em] text-primary font-bold mb-1">Golden Yolk Member</p>
-                    <h2 class="text-title-large font-semibold text-gray-800 mb-8 tracking-tight">Hi, ${currentUser.name.split(' ')[0]}!</h2>
-                    
+                    <h2 class="text-xl font-bold text-gray-800 mb-1 tracking-tight leading-tight">${escapeHTML(g.headline)}</h2>
+                    <p class="text-sm text-onSurfaceVariant font-medium mb-7">${escapeHTML(g.tagline)}</p>
+
                     <div class="relative w-full bg-surfaceVariant h-5 rounded-full mb-6 p-1 shadow-inner">
                         <div id="pBar" class="progress-transition bg-primary h-full rounded-full" style="width: 0%"></div>
                     </div>
-                    
+
                     <div class="flex justify-between items-center mb-8 px-2 border-b border-gray-100 pb-8 gap-4">
                         <div class="text-left leading-none flex items-baseline">
                             <span class="text-6xl font-black text-primary">${visits}</span>
                             <span class="text-xl text-onSurfaceVariant font-bold">/ 9</span>
                         </div>
                         <div class="grid grid-cols-2 gap-x-4 gap-y-2">
-                            ${ProfileStat("Card ID", currentUser.id)}
-                            ${ProfileStat("Join Date", currentUser.last_visit ? "Pune" : new Date().toLocaleDateString('en-IN'))}
-                            ${ProfileStat("Phone", currentUser.phone)}
-                            ${ProfileStat("Last Visit", currentUser.last_visit || "N/A")}
+                            ${ProfileStat("Card ID", escapeHTML(currentUser.id))}
+                            ${ProfileStat("Join Date", getJoinDate(currentUser))}
+                            ${ProfileStat("Phone", escapeHTML(currentUser.phone))}
+                            ${ProfileStat("Last Visit", escapeHTML(currentUser.last_visit || "N/A"))}
                         </div>
                     </div>
 
-                    <div class="bg-surfaceVariant bg-opacity-30 rounded-3xl p-6 border border-gray-100 mb-6">
+                    <div class="${rewardCardClasses} rounded-3xl p-6 mb-6">
+                        ${heroBanner}
                         <div class="flex items-center gap-2 mb-4 justify-center">
                             <label class="block text-xs font-bold text-onSurfaceVariant uppercase tracking-widest">Staff PIN</label>
                             <button onclick="showDialog('Staff Area', 'Ask your server to enter their pin to collect stamp.')" class="text-onSurfaceVariant text-xs hover:text-primary transition-colors"><i class="fa-solid fa-circle-info"></i></button>
                         </div>
-                        <input type="password" id="staffPin" placeholder="••••" class="w-full h-14 bg-surface border border-outline rounded-xl mb-5 text-center text-3xl font-bold tracking-widest focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all placeholder:tracking-normal placeholder:text-surfaceVariant">
-                        
-                        ${isNextReward ? `
-                            <div class="mb-4 py-1.5 px-3 bg-warning bg-opacity-10 text-primary text-[10px] font-black uppercase tracking-widest border border-warning border-opacity-20 rounded-lg">Next visit is a Free Reward! 🎁</div>
-                        ` : ''}
-                        
+                        <div class="relative h-14 mb-5">
+                            <div class="absolute inset-0 flex justify-center items-center gap-4 pointer-events-none bg-surface border border-outline rounded-xl">
+                                <span class="pin-dot w-4 h-4 rounded-full bg-surfaceVariant"></span>
+                                <span class="pin-dot w-4 h-4 rounded-full bg-surfaceVariant"></span>
+                                <span class="pin-dot w-4 h-4 rounded-full bg-surfaceVariant"></span>
+                                <span class="pin-dot w-4 h-4 rounded-full bg-surfaceVariant"></span>
+                            </div>
+                            <input type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="4" id="staffPin" oninput="updatePinDots(this.value)" autocomplete="off" class="absolute inset-0 w-full h-full opacity-0">
+                        </div>
+                        ${nextRewardPill}
                         ${PrimaryButton("Collect Stamp", "handleVisit(" + visits + ")")}
                     </div>
-                    
+
                     <button onclick="render('history')" class="text-primary font-bold text-xs uppercase tracking-[0.2em] border-b-2 border-primary border-opacity-20 pb-1 mx-auto block">Visit History</button>
                 `;
                 setTimeout(() => document.getElementById('pBar').style.width = progress + '%', 200);
@@ -202,78 +494,117 @@
             // --- VIEW: HISTORY ---
             else if (view === 'history') {
                 const logs = currentUser.history ? currentUser.history.split('|').filter(x => x) : [];
+                const groups = groupLogsByMonth(logs);
+                const groupsHTML = groups.length > 0
+                    ? groups.map(g => `
+                        ${MonthHeader(g.label)}
+                        <div class="space-y-2 mb-4">
+                            ${g.items.map(item => HistoryItem(item.d, item.visitNumber, item.isMilestone)).join('')}
+                        </div>
+                    `).join('')
+                    : '<p class="text-onSurfaceVariant py-10 font-bold italic">No visits recorded yet.</p>';
+
+                const whatsAppBtn = logs.length > 0 ? `
+                    <button onclick="openWhatsAppFeedback(${logs.length})" class="w-full bg-[#25D366] text-white rounded-full py-3 font-bold text-sm uppercase tracking-wider mb-3 flex items-center justify-center gap-2 active:scale-95 transition-transform">
+                        <i class="fa-brands fa-whatsapp text-lg"></i> Share Feedback
+                    </button>
+                ` : '';
+
                 container.innerHTML = `
-                    <h2 class="text-title-large font-semibold text-primary mb-6 text-left">Visit History</h2>
-                    <div class="space-y-3 mb-8 max-h-80 overflow-y-auto pr-1">
-                        ${logs.length > 0 ? logs.reverse().map((log, index) => {
-                            const d = new Date(log);
-                            return HistoryItem(d, logs.length, index);
-                        }).join('') : '<p class="text-onSurfaceVariant py-10 font-bold italic">No visits recorded yet.</p>'}
+                    <h2 class="text-xl font-semibold text-primary mb-6 text-left">Visit History</h2>
+                    <div class="history-scroll max-h-96 overflow-y-auto pr-1 mb-6">
+                        ${groupsHTML}
                     </div>
+                    ${whatsAppBtn}
                     ${SecondaryButton("Back to Profile", "render('profile')")}
                 `;
             }
         }
 
         async function handleRegistration() {
-            const name = document.getElementById('regName').value;
-            const fullPhone = document.getElementById('isd').value + document.getElementById('regPhone').value;
-            const btn = document.getElementById('regBtn');
+            if (registering) return;
+            const btn = document.getElementById('handleRegistrationBtn');
+            const rawName = document.getElementById('regName').value;
+            const isd = document.getElementById('isd').value;
+            const rawPhone = document.getElementById('regPhone').value;
 
-            if (name.length < 3 || document.getElementById('regPhone').value.length < 10) return showDialog("Validation", "Please enter a valid Name and a 10-digit Phone Number.");
+            const name = sanitizeName(rawName);
+            if (!name) return showDialog("Invalid Name", "Please enter a valid name (2-50 letters, spaces or dots).");
 
-            btn.disabled = true; btn.innerHTML = "Verifying...";
+            const phoneCheck = validatePhone(isd, rawPhone);
+            if (!phoneCheck.ok) return showDialog("Invalid Phone", phoneCheck.reason);
+
+            const fullPhone = isd + phoneCheck.digits;
+
+            registering = true;
+            if (btn) { btn.disabled = true; btn.innerHTML = "Verifying..."; }
 
             try {
-                // LOGIC: Check if phone number already has 9 visits globally
                 const res = await fetch(`${API_URL}/search?phone=${encodeURIComponent(fullPhone)}`);
                 const globalUsers = await res.json();
                 const totalGlobalVisits = globalUsers.reduce((sum, u) => sum + (parseInt(u.visits) || 0), 0);
 
                 if (totalGlobalVisits >= 9) {
-                    showDialog("Global Limit Reached", "This phone number has already reached the maximum of 9 visits across all Yolkshire loyalty cards. Contact management for a new master card.");
-                    btn.disabled = false; btn.innerHTML = "Complete Activation";
-                    return;
+                    registering = false;
+                    if (btn) { btn.disabled = false; btn.innerHTML = "Complete Activation"; }
+                    return showDialog("Global Limit Reached", "This phone number has already reached the maximum of 9 visits across all Yolkshire loyalty cards. Contact management for a new master card.");
                 }
 
-                await fetch(`${API_URL}/id/${cardId}`, {
+                await fetch(`${API_URL}/id/${encodeURIComponent(cardId)}`, {
                     method: 'PATCH',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ name: name, phone: fullPhone, visits: 0 })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, phone: fullPhone, visits: 0 })
                 });
                 render('success');
-            } catch (err) { showError("Database connection failed. Refresh and try again."); }
+            } catch (err) {
+                registering = false;
+                showError("Database connection failed. Refresh and try again.");
+            }
         }
 
         async function handleVisit(currentVisits) {
-            const pin = document.getElementById('staffPin').value;
-            const btn = document.getElementById('visitBtn');
-            if (pin !== "2010") return showDialog("Invalid PIN", "You entered an incorrect Staff authorization PIN.");
+            const btn = document.getElementById('handleVisitBtn');
+            if (btn && btn.disabled) return;
+            if (btn) btn.disabled = true;
+            const reenable = () => { if (btn) btn.disabled = false; };
 
-            // LOGIC: [TEST FLAG] 
+            const pin = document.getElementById('staffPin').value;
+            if (pin !== "2010") {
+                reenable();
+                return showDialog("Invalid PIN", "You entered an incorrect Staff authorization PIN.");
+            }
+
             if (ENABLE_DAILY_LIMIT_CHECK) {
                 const todayStr = new Date().toLocaleDateString('en-IN');
                 if (currentUser.last_visit === todayStr) {
+                    reenable();
                     return showDialog("Daily Limit", "Oops! Guest is allowed only one visit per day to collect a stamp.");
                 }
             } else {
                 console.log("[DEBUG] Daily Limit check is DISABLED for testing.");
             }
 
-            // LOGIC: Max 9 visits ever
             if (currentVisits >= 9) {
+                reenable();
                 return showDialog("Card Complete", "Guest has reached the maximum of 9 visits on this Golden Yolk card. Please generate a new card number.");
             }
 
-            // Confirm Reward Redemption on visits 3, 6, 9
             const newVisitCount = currentVisits + 1;
             if (newVisitCount % 3 === 0) {
-                if (!confirm(`🎁 Visit #${newVisitCount} earns a Free Reward! Did the guest redeem a reward today? (Stamping will proceed regardless)`)) {
-                    // Stamping continues even if they cancel, but it's a UX confirmation
-                }
+                ConfirmDialog(
+                    "Free Reward 🎁",
+                    `Visit #${newVisitCount} earns a Free Reward. Did the guest redeem a reward today? (Stamping will proceed regardless.)`,
+                    () => proceedStamp(newVisitCount),
+                    () => proceedStamp(newVisitCount)
+                );
+            } else {
+                proceedStamp(newVisitCount);
             }
+        }
 
-            btn.disabled = true; btn.innerHTML = "Stamping...";
+        async function proceedStamp(newVisitCount) {
+            const btn = document.getElementById('handleVisitBtn');
+            if (btn) btn.innerHTML = "Stamping...";
 
             const now = new Date();
             const todayStr = now.toLocaleDateString('en-IN');
@@ -281,15 +612,19 @@
             const updatedHistory = currentUser.history ? currentUser.history + "|" + logEntry : logEntry;
 
             try {
-                await fetch(`${API_URL}/id/${cardId}`, {
+                await fetch(`${API_URL}/id/${encodeURIComponent(cardId)}`, {
                     method: 'PATCH',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ 
-                        visits: newVisitCount, 
-                        last_visit: todayStr, 
-                        history: updatedHistory 
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        visits: newVisitCount,
+                        last_visit: todayStr,
+                        history: updatedHistory
                     })
                 });
+
+                if (newVisitCount % 3 === 0) {
+                    await celebrateMilestone(newVisitCount);
+                }
                 location.reload();
             } catch (err) { showError("Database connection failed. Visit not stamped."); }
         }
@@ -299,23 +634,12 @@
             document.getElementById('app').classList.remove('hidden');
             document.getElementById('main-content').innerHTML = `
                 <div class="py-10">
-                    <div class="text-error text-5xl mb-6 flex justify-center">⚠️</div>
-                    <h2 class="text-headline-small font-semibold text-gray-800 mb-2 tracking-tight">System Error</h2>
-                    <p class="text-body-medium text-gray-500 mb-10 font-medium">${msg}</p>
+                    <div class="text-5xl mb-6 flex justify-center">⚠️</div>
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-2 tracking-tight">System Error</h2>
+                    <p class="text-sm text-gray-500 mb-10 font-medium">${escapeHTML(msg)}</p>
                     ${SecondaryButton("Try Again", "location.reload()")}
                 </div>
             `;
-        }
-
-        // --- DIALOG LOGIC ---
-        function showDialog(title, message) {
-            document.getElementById('dialog-title').innerText = title;
-            document.getElementById('dialog-message').innerText = message;
-            document.getElementById('dialog').classList.remove('hidden');
-        }
-
-        function closeDialog() {
-            document.getElementById('dialog').classList.add('hidden');
         }
 
         init();
