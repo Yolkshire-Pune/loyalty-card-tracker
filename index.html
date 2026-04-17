@@ -239,12 +239,21 @@
 
         function splitPhone(stored) {
             const s = String(stored || '').trim();
-            if (!s.startsWith('+')) return { code: '', digits: s };
-            for (let len = 4; len >= 1; len--) {
-                const tryCode = s.slice(0, len + 1);
-                if (PHONE_RULES[tryCode]) return { code: tryCode, digits: s.slice(len + 1) };
+            // With a leading + — match longest known ISD prefix.
+            if (s.startsWith('+')) {
+                for (let len = 4; len >= 1; len--) {
+                    const tryCode = s.slice(0, len + 1);
+                    if (PHONE_RULES[tryCode]) return { code: tryCode, digits: s.slice(len + 1) };
+                }
+                return { code: s.slice(0, 3), digits: s.slice(3) };
             }
-            return { code: s.slice(0, 3), digits: s.slice(3) };
+            // No leading + (Google Sheets can strip it when a column auto-formats as number).
+            // Reconstruct by matching longest known ISD prefix without the +.
+            for (let len = 4; len >= 1; len--) {
+                const candidate = '+' + s.slice(0, len);
+                if (PHONE_RULES[candidate]) return { code: candidate, digits: s.slice(len) };
+            }
+            return { code: '', digits: s };
         }
 
         function formatPhone(stored) {
@@ -265,7 +274,7 @@
             if (hr >= 5  && hr < 11) return { headline: `Good morning, ${firstName}!`,                    tagline: 'Ready for your morning protein fix?' };
             if (hr >= 11 && hr < 16) return { headline: `Egg-cellent choice for lunch, ${firstName}!`,    tagline: 'Your stamp awaits.' };
             if (hr >= 16 && hr < 21) return { headline: `Winding down, ${firstName}?`,                    tagline: 'Perfect time for a Golden Yolk visit.' };
-            return                         { headline: `Late-night cravings, ${firstName}?`,              tagline: 'The Golden Yolk has your back.' };
+            return                         { headline: `Late-night cravings, ${firstName}?`,              tagline: "Yolkshire's got your back." };
         }
         function getJoinDate(user) {
             if (!user.history) return '—';
@@ -740,9 +749,10 @@
             }
 
             if (shouldCelebrate) {
+                const firstName = (currentUser.name || '').split(' ')[0] || 'the guest';
                 const message = isFinalStamp
-                    ? "Final stamp of the card! Did the guest redeem today's Free Reward? Stamping will proceed regardless."
-                    : "Welcome back! Did the guest redeem the Free Reward from their last visit? Stamping will proceed regardless.";
+                    ? `Final stamp of the card! Did ${firstName} redeem today's Free Reward? Stamping will proceed regardless.`
+                    : `Welcome back! Did ${firstName} redeem the Free Reward from their last visit? Stamping will proceed regardless.`;
                 ConfirmDialog(
                     "Free Reward 🎁",
                     message,
