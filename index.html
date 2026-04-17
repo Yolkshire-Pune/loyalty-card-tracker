@@ -8,26 +8,49 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script>
         tailwind.config = {
-            theme: { extend: { colors: { yolkGreen: '#0d6a37', yolkGold: '#fcc314', yolkBg: '#f9fdfd' } } }
+            theme: {
+                extend: {
+                    colors: {
+                        // M3 Inspired Palette with Golden Yolk brand primary
+                        primary: '#0d6a37',
+                        onPrimary: '#ffffff',
+                        surface: '#ffffff',
+                        onSurface: '#191c1a',
+                        surfaceVariant: '#e1e5df', // tonal surface for stats/history
+                        onSurfaceVariant: '#404942',
+                        outline: '#707971',
+                        yolkBg: '#f9fdfd',
+                        warning: '#fcc314' // Gold for rewards
+                    }
+                }
+            }
         }
     </script>
     <style>
-        .progress-transition { transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1); }
-        .yolk-shadow { box-shadow: 0 20px 50px rgba(13, 106, 55, 0.12); }
-        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        .fade-in { animation: fadeIn 0.4s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        html, body { height: 100%; margin: 0; padding: 0; overflow-x: hidden; }
+        .progress-transition { transition: width 1s cubic-bezier(0.4, 0, 0.2, 1); }
+        .yolk-shadow { box-shadow: 0 16px 40px rgba(13, 106, 55, 0.08); }
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body class="bg-yolkBg flex items-center justify-center p-4 min-h-screen text-gray-800 font-medium">
+<body class="bg-yolkBg flex items-center justify-center p-4 min-h-screen text-onSurface font-medium antialiased">
 
-    <div id="app" class="bg-white w-full max-w-md rounded-[3rem] yolk-shadow p-8 text-center hidden border border-gray-50 fade-in">
-        <img src="yolkshire-new-logo-fhd.png" alt="Yolkshire" class="w-40 mx-auto mb-8">
+    <div id="app" class="bg-surface w-full max-w-sm sm:max-w-md rounded-3xl yolk-shadow p-6 text-center hidden border border-gray-50 fade-in">
+        <img src="yolkshire-new-logo-fhd.png" alt="Yolkshire" class="w-32 mx-auto mb-6">
         <div id="main-content"></div>
     </div>
 
     <div id="loader" class="flex flex-col items-center">
-        <div class="animate-spin rounded-full h-12 w-12 border-t-4 border-yolkGreen border-opacity-20 border-t-yolkGreen"></div>
+        <div class="animate-spin rounded-full h-10 w-10 border-t-4 border-primary border-opacity-20 border-t-primary"></div>
+    </div>
+
+    <div id="dialog" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden" onclick="closeDialog()">
+        <div class="bg-surface rounded-2xl p-6 yolk-shadow max-w-xs w-full fade-in" onclick="event.stopPropagation()">
+            <h3 id="dialog-title" class="text-xl font-bold mb-3">System Message</h3>
+            <p id="dialog-message" class="text-sm text-gray-600 mb-6 font-medium"></p>
+            <button onclick="closeDialog()" class="w-full bg-surfaceVariant text-onSurfaceVariant rounded-full py-3 font-semibold text-sm uppercase tracking-wider">OK</button>
+        </div>
     </div>
 
     <script>
@@ -36,15 +59,58 @@
         const cardId = urlParams.get('id');
         let currentUser = null;
 
+        // ⚠️ [TEST FLAG] Set to true for production logic
+        const ENABLE_DAILY_LIMIT_CHECK = false; 
+
+        // --- COMPONENT FUNCTIONS (For consistency) ---
+
+        // M3 style filled primary button (green)
+        const PrimaryButton = (label, onClick) => `<button onclick="${onClick}" id="${onClick.split('(')[0]}Btn" class="w-full bg-primary text-onPrimary rounded-full py-4 font-bold text-sm uppercase tracking-wider active:scale-95 transition-transform disabled:bg-surfaceVariant disabled:text-onSurfaceVariant disabled:opacity-38">${label}</button>`;
+        
+        // M3 style tonal secondary button (gray)
+        const SecondaryButton = (label, onClick) => `<button onclick="${onClick}" class="w-full bg-surfaceVariant text-onSurfaceVariant rounded-full py-4 font-bold text-sm uppercase tracking-wider">${label}</button>`;
+
+        // M3 Outlined Text Field
+        const OutlinedTextField = (id, label, placeholder, type = 'text', additionalHTML = '') => `
+            <div class="mb-4 text-left">
+                <label for="${id}" class="block text-xs font-semibold text-onSurfaceVariant mb-2 ml-1">${label}</label>
+                <div class="flex gap-2">
+                    ${additionalHTML}
+                    <input type="${type}" id="${id}" placeholder="${placeholder}" class="flex-1 w-full border border-outline rounded-xl px-4 py-3.5 font-bold text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all">
+                </div>
+            </div>`;
+
+        // Profile stats card (Card ID, Phone, Last Visit)
+        const ProfileStat = (label, value) => `
+            <div class="flex flex-col text-left">
+                <p class="text-[9px] font-bold text-onSurfaceVariant uppercase tracking-widest leading-snug">${label}</p>
+                <p class="text-xs font-bold text-onSurface">${value}</p>
+            </div>`;
+
+        // History list item card
+        const HistoryItem = (d, visits, index) => `
+            <div class="bg-surfaceVariant p-4 rounded-xl border border-gray-100 flex justify-between items-center text-left">
+                <div>
+                    <p class="text-xs font-bold text-onSurfaceVariant uppercase">Visit #${visits - index}</p>
+                    <p class="font-bold text-onSurface">${d.toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'})}</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-xs font-semibold text-onSurfaceVariant">${d.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'})}</p>
+                </div>
+            </div>`;
+
+
+        // --- MAIN APP LOGIC ---
+
         async function init() {
-            if (!cardId) return showError("Invalid Scan. No Card ID detected.");
+            if (!cardId) return showError("Invalid QR Code.");
             try {
                 const res = await fetch(`${API_URL}/search?id=${cardId}`);
                 const data = await res.json();
-                if (data.length === 0) return showError("Card ID not found in system.");
+                if (data.length === 0) return showError("Card ID not found in database.");
                 currentUser = data[0];
                 render();
-            } catch (err) { showError("Connection Error. Please try again."); }
+            } catch (err) { showError("Database connection failed. Check your SheetDB setup."); }
         }
 
         function render(view = 'default') {
@@ -55,40 +121,36 @@
             // --- VIEW: SCAN (Initial) ---
             if (!currentUser.name && view === 'default') {
                 container.innerHTML = `
-                    <div class="py-10">
-                        <p class="text-[10px] uppercase tracking-[0.3em] text-gray-400 font-bold mb-2">New Card Detected</p>
-                        <h1 class="text-4xl font-black text-yolkGreen mb-8">#${cardId}</h1>
-                        <button onclick="render('register')" class="w-full h-16 bg-yolkGreen text-white rounded-2xl font-black text-xl shadow-lg uppercase tracking-widest active:scale-95 transition-transform">Activate Card</button>
-                    </div>
-                `;
+                    <div class="p-6">
+                        <p class="text-xs uppercase tracking-[0.3em] text-onSurfaceVariant font-bold mb-3">Scan Detected</p>
+                        <h1 class="text-headline-small font-semibold text-primary mb-12">#${cardId}</h1>
+                        ${PrimaryButton("Activate Card", "render('register')")}
+                    </div>`;
             } 
             // --- VIEW: REGISTER ---
             else if (view === 'register') {
+                const isdHTML = `
+                    <select id="isd" class="border border-outline rounded-xl px-2.5 font-bold text-sm outline-none bg-white">
+                        <option value="+91" selected>🇮🇳 +91</option>
+                        <option value="+1">🇺🇺🇸 +1</option>
+                        <option value="+44">🇬🇧 +44</option>
+                        <option value="+971">🇦🇪 +971</option>
+                    </select>`;
                 container.innerHTML = `
-                    <h2 class="text-2xl font-black text-yolkGreen mb-6">Join Golden Yolk</h2>
-                    <div class="space-y-4 text-left">
-                        <input type="text" id="regName" placeholder="Full Name" class="w-full h-16 border-2 border-gray-100 rounded-2xl px-6 font-bold outline-none focus:border-yolkGreen transition-all">
-                        <div class="flex gap-2">
-                            <select id="isd" class="h-16 border-2 border-gray-100 rounded-2xl px-3 font-bold outline-none bg-white">
-                                <option value="+91" selected>🇮🇳 +91</option>
-                                <option value="+1">🇺🇸 +1</option>
-                                <option value="+44">🇬🇧 +44</option>
-                                <option value="+971">🇦🇪 +971</option>
-                            </select>
-                            <input type="tel" id="regPhone" placeholder="Phone Number" class="flex-1 h-16 border-2 border-gray-100 rounded-2xl px-6 font-bold outline-none focus:border-yolkGreen transition-all">
-                        </div>
-                        <button onclick="handleRegistration()" id="regBtn" class="w-full h-16 bg-yolkGreen text-white rounded-2xl font-black text-xl shadow-lg uppercase tracking-widest mt-4">Complete Sign-Up</button>
-                    </div>
+                    <h2 class="text-title-large font-semibold text-primary mb-6">Join Golden Yolk Loyalty</h2>
+                    ${OutlinedTextField("regName", "Full Name", "John Doe")}
+                    ${OutlinedTextField("regPhone", "Phone Number", "9876543210", "tel", isdHTML)}
+                    <div class="mt-8">${PrimaryButton("Complete Activation", "handleRegistration()")}</div>
                 `;
             }
             // --- VIEW: SUCCESS ---
             else if (view === 'success') {
                 container.innerHTML = `
                     <div class="py-10">
-                        <div class="w-20 h-20 bg-green-100 text-yolkGreen rounded-full flex items-center justify-center mx-auto mb-6 text-3xl">✓</div>
-                        <h2 class="text-3xl font-black text-gray-800 mb-2">Congratulations!</h2>
-                        <p class="text-gray-500 mb-10 font-medium">Your loyalty card is now active.</p>
-                        <button onclick="location.reload()" class="w-full h-16 bg-yolkGreen text-white rounded-2xl font-black text-xl shadow-lg uppercase tracking-widest">Go to Profile</button>
+                        <div class="w-16 h-16 bg-green-100 text-primary rounded-full flex items-center justify-center mx-auto mb-6 text-2xl">✓</div>
+                        <h2 class="text-headline-small font-semibold text-gray-800 mb-2 tracking-tight">Congratulations!</h2>
+                        <p class="text-body-medium text-gray-500 mb-10 font-medium">Your loyalty card #${currentUser.id} is now active.</p>
+                        ${PrimaryButton("Go to Profile", "location.reload()")}
                     </div>
                 `;
             }
@@ -99,40 +161,41 @@
                 const isNextReward = (visits + 1) % 3 === 0;
 
                 container.innerHTML = `
-                    <p class="text-[10px] uppercase tracking-[0.25em] text-yolkGreen font-black mb-1">Golden Yolk Member</p>
-                    <h2 class="text-3xl font-black text-gray-800 mb-8 tracking-tight">Hi, ${currentUser.name.split(' ')[0]}!</h2>
+                    <p class="text-[10px] uppercase tracking-[0.25em] text-primary font-bold mb-1">Golden Yolk Member</p>
+                    <h2 class="text-title-large font-semibold text-gray-800 mb-8 tracking-tight">Hi, ${currentUser.name.split(' ')[0]}!</h2>
                     
-                    <div class="w-full bg-gray-100 h-6 rounded-full mb-6 p-1.5 shadow-inner">
-                        <div id="pBar" class="progress-transition bg-yolkGreen h-full rounded-full" style="width: 0%"></div>
+                    <div class="relative w-full bg-surfaceVariant h-5 rounded-full mb-6 p-1 shadow-inner">
+                        <div id="pBar" class="progress-transition bg-primary h-full rounded-full" style="width: 0%"></div>
                     </div>
                     
-                    <div class="flex justify-between items-center mb-8 px-2 border-b border-gray-50 pb-8">
-                        <div class="text-left leading-none">
-                            <span class="text-6xl font-black text-yolkGreen">${visits}</span>
-                            <span class="text-xl text-gray-300 font-black">/ 9</span>
+                    <div class="flex justify-between items-center mb-8 px-2 border-b border-gray-100 pb-8 gap-4">
+                        <div class="text-left leading-none flex items-baseline">
+                            <span class="text-6xl font-black text-primary">${visits}</span>
+                            <span class="text-xl text-onSurfaceVariant font-bold">/ 9</span>
                         </div>
-                        <div class="text-right text-[10px] font-black text-gray-400 uppercase leading-snug">
-                            Card ID: ${currentUser.id}<br>
-                            Phone: ${currentUser.phone}<br>
-                            Last: ${currentUser.last_visit || 'Join Date'}
+                        <div class="grid grid-cols-2 gap-x-4 gap-y-2">
+                            ${ProfileStat("Card ID", currentUser.id)}
+                            ${ProfileStat("Join Date", currentUser.last_visit ? "Pune" : new Date().toLocaleDateString('en-IN'))}
+                            ${ProfileStat("Phone", currentUser.phone)}
+                            ${ProfileStat("Last Visit", currentUser.last_visit || "N/A")}
                         </div>
                     </div>
 
-                    <div class="bg-yolkBg rounded-[2rem] p-8 border border-gray-100 mb-6">
-                        <div class="flex justify-center items-center gap-2 mb-4">
-                            <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Staff PIN</label>
-                            <button onclick="alert('Ask your server to enter their pin to collect stamp')" class="text-gray-300 text-xs hover:text-yolkGreen transition-colors"><i class="fa-solid fa-circle-info"></i></button>
+                    <div class="bg-surfaceVariant bg-opacity-30 rounded-3xl p-6 border border-gray-100 mb-6">
+                        <div class="flex items-center gap-2 mb-4 justify-center">
+                            <label class="block text-xs font-bold text-onSurfaceVariant uppercase tracking-widest">Staff PIN</label>
+                            <button onclick="showDialog('Staff Area', 'Ask your server to enter their pin to collect stamp.')" class="text-onSurfaceVariant text-xs hover:text-primary transition-colors"><i class="fa-solid fa-circle-info"></i></button>
                         </div>
-                        <input type="password" id="staffPin" placeholder="••••" class="w-full h-16 bg-white border-2 border-gray-200 rounded-2xl mb-5 text-center text-4xl tracking-[1.5rem] font-black focus:border-yolkGreen outline-none transition-all">
+                        <input type="password" id="staffPin" placeholder="••••" class="w-full h-14 bg-surface border border-outline rounded-xl mb-5 text-center text-3xl font-bold tracking-widest focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all placeholder:tracking-normal placeholder:text-surfaceVariant">
                         
                         ${isNextReward ? `
-                            <div class="mb-4 py-2 bg-yolkGold bg-opacity-10 text-yolkGreen text-[10px] font-black uppercase tracking-widest border border-yolkGold border-opacity-20 rounded-xl">Next visit is a Free Reward! 🎁</div>
+                            <div class="mb-4 py-1.5 px-3 bg-warning bg-opacity-10 text-primary text-[10px] font-black uppercase tracking-widest border border-warning border-opacity-20 rounded-lg">Next visit is a Free Reward! 🎁</div>
                         ` : ''}
                         
-                        <button onclick="handleVisit(${visits})" id="visitBtn" class="w-full h-16 bg-yolkGreen text-white rounded-2xl font-black text-lg shadow-xl uppercase tracking-widest active:scale-95 transition-transform">Collect Stamp</button>
+                        ${PrimaryButton("Collect Stamp", "handleVisit(" + visits + ")")}
                     </div>
                     
-                    <button onclick="render('history')" class="text-yolkGreen font-black text-xs uppercase tracking-[0.2em] border-b-2 border-yolkGreen border-opacity-20 pb-1">View Visit History</button>
+                    <button onclick="render('history')" class="text-primary font-bold text-xs uppercase tracking-[0.2em] border-b-2 border-primary border-opacity-20 pb-1 mx-auto block">Visit History</button>
                 `;
                 setTimeout(() => document.getElementById('pBar').style.width = progress + '%', 200);
             }
@@ -140,24 +203,14 @@
             else if (view === 'history') {
                 const logs = currentUser.history ? currentUser.history.split('|').filter(x => x) : [];
                 container.innerHTML = `
-                    <h2 class="text-2xl font-black text-yolkGreen mb-6 text-left">Visit History</h2>
-                    <div class="space-y-3 mb-8 max-h-80 overflow-y-auto pr-2 text-left">
+                    <h2 class="text-title-large font-semibold text-primary mb-6 text-left">Visit History</h2>
+                    <div class="space-y-3 mb-8 max-h-80 overflow-y-auto pr-1">
                         ${logs.length > 0 ? logs.reverse().map((log, index) => {
                             const d = new Date(log);
-                            return `
-                                <div class="bg-gray-50 p-4 rounded-2xl flex justify-between items-center border border-gray-100">
-                                    <div>
-                                        <p class="text-xs font-black text-gray-400 uppercase">Visit #${logs.length - index}</p>
-                                        <p class="font-bold text-gray-700">${d.toLocaleDateString('en-IN', {day:'numeric', month:'short', year:'numeric'})}</p>
-                                    </div>
-                                    <div class="text-right">
-                                        <p class="text-xs font-bold text-gray-400">${d.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'})}</p>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('') : '<p class="text-gray-400 py-10 text-center font-bold italic">No visits recorded yet.</p>'}
+                            return HistoryItem(d, logs.length, index);
+                        }).join('') : '<p class="text-onSurfaceVariant py-10 font-bold italic">No visits recorded yet.</p>'}
                     </div>
-                    <button onclick="render('profile')" class="w-full h-16 bg-gray-100 text-gray-500 rounded-2xl font-black text-lg uppercase tracking-widest">Back to Profile</button>
+                    ${SecondaryButton("Back to Profile", "render('profile')")}
                 `;
             }
         }
@@ -167,61 +220,78 @@
             const fullPhone = document.getElementById('isd').value + document.getElementById('regPhone').value;
             const btn = document.getElementById('regBtn');
 
-            if (name.length < 3 || document.getElementById('regPhone').value.length < 10) return alert("Enter valid Name and Phone.");
+            if (name.length < 3 || document.getElementById('regPhone').value.length < 10) return showDialog("Validation", "Please enter a valid Name and a 10-digit Phone Number.");
 
             btn.disabled = true; btn.innerHTML = "Verifying...";
 
-            // LOGIC: Check if phone number already has 9 visits globally
-            const res = await fetch(`${API_URL}/search?phone=${encodeURIComponent(fullPhone)}`);
-            const globalUsers = await res.json();
-            const totalGlobalVisits = globalUsers.reduce((sum, u) => sum + (parseInt(u.visits) || 0), 0);
+            try {
+                // LOGIC: Check if phone number already has 9 visits globally
+                const res = await fetch(`${API_URL}/search?phone=${encodeURIComponent(fullPhone)}`);
+                const globalUsers = await res.json();
+                const totalGlobalVisits = globalUsers.reduce((sum, u) => sum + (parseInt(u.visits) || 0), 0);
 
-            if (totalGlobalVisits >= 9) {
-                alert("This phone number has reached the maximum of 9 visits across all Yolkshire loyalty cards.");
-                btn.disabled = false; btn.innerHTML = "Complete Sign-Up";
-                return;
-            }
+                if (totalGlobalVisits >= 9) {
+                    showDialog("Global Limit Reached", "This phone number has already reached the maximum of 9 visits across all Yolkshire loyalty cards. Contact management for a new master card.");
+                    btn.disabled = false; btn.innerHTML = "Complete Activation";
+                    return;
+                }
 
-            await fetch(`${API_URL}/id/${cardId}`, {
-                method: 'PATCH',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ name: name, phone: fullPhone, visits: 0 })
-            });
-            render('success');
+                await fetch(`${API_URL}/id/${cardId}`, {
+                    method: 'PATCH',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ name: name, phone: fullPhone, visits: 0 })
+                });
+                render('success');
+            } catch (err) { showError("Database connection failed. Refresh and try again."); }
         }
 
         async function handleVisit(currentVisits) {
             const pin = document.getElementById('staffPin').value;
             const btn = document.getElementById('visitBtn');
-            if (pin !== "2010") return alert("Invalid Staff PIN");
+            if (pin !== "2010") return showDialog("Invalid PIN", "You entered an incorrect Staff authorization PIN.");
 
-            // LOGIC: No more than 1 visit per day
-            const todayStr = new Date().toLocaleDateString('en-IN');
-            if (currentUser.last_visit === todayStr) {
-                return alert("Oops! Only one visit allowed per day.");
+            // LOGIC: [TEST FLAG] 
+            if (ENABLE_DAILY_LIMIT_CHECK) {
+                const todayStr = new Date().toLocaleDateString('en-IN');
+                if (currentUser.last_visit === todayStr) {
+                    return showDialog("Daily Limit", "Oops! Guest is allowed only one visit per day to collect a stamp.");
+                }
+            } else {
+                console.log("[DEBUG] Daily Limit check is DISABLED for testing.");
             }
 
             // LOGIC: Max 9 visits ever
             if (currentVisits >= 9) {
-                return alert("Card Complete! You have reached the 9-visit limit.");
+                return showDialog("Card Complete", "Guest has reached the maximum of 9 visits on this Golden Yolk card. Please generate a new card number.");
+            }
+
+            // Confirm Reward Redemption on visits 3, 6, 9
+            const newVisitCount = currentVisits + 1;
+            if (newVisitCount % 3 === 0) {
+                if (!confirm(`🎁 Visit #${newVisitCount} earns a Free Reward! Did the guest redeem a reward today? (Stamping will proceed regardless)`)) {
+                    // Stamping continues even if they cancel, but it's a UX confirmation
+                }
             }
 
             btn.disabled = true; btn.innerHTML = "Stamping...";
 
             const now = new Date();
+            const todayStr = now.toLocaleDateString('en-IN');
             const logEntry = now.toISOString();
             const updatedHistory = currentUser.history ? currentUser.history + "|" + logEntry : logEntry;
 
-            await fetch(`${API_URL}/id/${cardId}`, {
-                method: 'PATCH',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ 
-                    visits: currentVisits + 1, 
-                    last_visit: todayStr, 
-                    history: updatedHistory 
-                })
-            });
-            location.reload();
+            try {
+                await fetch(`${API_URL}/id/${cardId}`, {
+                    method: 'PATCH',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ 
+                        visits: newVisitCount, 
+                        last_visit: todayStr, 
+                        history: updatedHistory 
+                    })
+                });
+                location.reload();
+            } catch (err) { showError("Database connection failed. Visit not stamped."); }
         }
 
         function showError(msg) {
@@ -229,12 +299,23 @@
             document.getElementById('app').classList.remove('hidden');
             document.getElementById('main-content').innerHTML = `
                 <div class="py-10">
-                    <div class="text-red-500 text-5xl mb-6">⚠️</div>
-                    <h2 class="text-2xl font-black text-gray-800 mb-2">Oops!</h2>
-                    <p class="text-gray-500 font-medium mb-8">${msg}</p>
-                    <button onclick="location.reload()" class="w-full h-16 bg-gray-100 text-gray-400 rounded-2xl font-black uppercase tracking-widest">Try Again</button>
+                    <div class="text-error text-5xl mb-6 flex justify-center">⚠️</div>
+                    <h2 class="text-headline-small font-semibold text-gray-800 mb-2 tracking-tight">System Error</h2>
+                    <p class="text-body-medium text-gray-500 mb-10 font-medium">${msg}</p>
+                    ${SecondaryButton("Try Again", "location.reload()")}
                 </div>
             `;
+        }
+
+        // --- DIALOG LOGIC ---
+        function showDialog(title, message) {
+            document.getElementById('dialog-title').innerText = title;
+            document.getElementById('dialog-message').innerText = message;
+            document.getElementById('dialog').classList.remove('hidden');
+        }
+
+        function closeDialog() {
+            document.getElementById('dialog').classList.add('hidden');
         }
 
         init();
