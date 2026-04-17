@@ -26,7 +26,7 @@ OUT_DIR.mkdir(exist_ok=True)
 
 # Box where the per-card QR image goes — shifted right+down from initial estimate
 # to center it in the green panel.
-QR_RECT = fitz.Rect(198, 25, 266, 93)      # 68x68 pt
+QR_RECT = fitz.Rect(196, 25, 264, 93)      # 68x68 pt
 
 # Box covering the existing "CARD ID" label so we can overlay the real ID.
 CARD_ID_LABEL_RECT = fitz.Rect(212, 95, 243, 105)
