@@ -17,10 +17,11 @@ from qrcode.image.styledpil import StyledPilImage
 from qrcode.image.styles.moduledrawers.pil import RoundedModuleDrawer
 from qrcode.image.styles.colormasks import SolidFillColorMask
 
-BASE_URL = "https://yolkshire-pune.github.io/loyalty-card-tracker/?id="
-HERE     = Path(__file__).parent
-OUT_DIR  = HERE / "qrs"
-LOGO     = HERE.parent / "yolkshire-new-logo-fhd.png"   # repo-root logo, not duplicated
+BASE_URL     = "https://yolkshire-pune.github.io/loyalty-card-tracker/?id="
+QR_HOST_URL  = "https://yolkshire-golden-yolk-qr.netlify.app/"   # public host for QR PNGs (Canva Bulk Create)
+HERE         = Path(__file__).parent
+OUT_DIR      = HERE / "qrs"
+LOGO         = HERE.parent / "yolkshire-new-logo-fhd.png"   # repo-root logo, not duplicated
 
 # Brand palette (RGB)
 GOLD       = (245, 185, 52)   # #f5b934 — QR modules (foreground)
@@ -37,7 +38,7 @@ id_csv  = HERE / "qrs-indesign.csv"
 
 with std_csv.open('w', newline='', encoding='utf-8') as fs, \
      id_csv.open('w', newline='', encoding='utf-8') as fi:
-    w_std = csv.writer(fs); w_std.writerow(['card_id', 'qr_filename', 'url'])
+    w_std = csv.writer(fs); w_std.writerow(['card_id', 'qr_filename', 'qr_url', 'url'])
     w_id  = csv.writer(fi); w_id.writerow(['card_id', '@qr_image', 'url'])
 
     for i in range(1, 1000):                       # YSLC001 … YSLC999
@@ -64,7 +65,8 @@ with std_csv.open('w', newline='', encoding='utf-8') as fs, \
             if generated % 100 == 0:
                 print(f"  ...{generated} new QRs generated")
 
-        w_std.writerow([card_id, filename, url])
+        qr_url = QR_HOST_URL + filename
+        w_std.writerow([card_id, filename, qr_url, url])
         w_id.writerow([card_id, f"qrs/{filename}", url])
 
 print(f"Done — {generated} new, {skipped} skipped. PNGs: {OUT_DIR.resolve()}")
