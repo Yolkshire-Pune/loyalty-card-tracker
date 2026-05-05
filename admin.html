@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yolkshire Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#0d6a37',
+                        onPrimary: '#ffffff',
+                        surface: '#ffffff',
+                        yolkBg: '#f9fdfd',
+                        warning: '#fcc314'
+                    },
+                    fontFamily: {
+                        sans: ['Poppins', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Poppins', sans-serif; }
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        tr:hover { background-color: #f3f4f6; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen text-gray-800 antialiased p-4 sm:p-8">
+
+    <!-- LOGIN SCREEN -->
+    <div id="login-screen" class="max-w-md mx-auto bg-white rounded-3xl shadow-lg p-8 mt-20 text-center fade-in">
+        <h1 class="text-2xl font-bold text-primary mb-2">Admin Dashboard</h1>
+        <p class="text-sm text-gray-500 mb-6">Enter admin PIN to access loyalty records</p>
+        <input type="password" id="adminPin" placeholder="Enter PIN" class="w-full border border-gray-300 rounded-xl px-4 py-3 font-bold text-center mb-4 outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+        <button onclick="login()" class="w-full bg-primary text-white rounded-xl py-3 font-bold uppercase tracking-wider active:scale-95 transition-transform">Access Dashboard</button>
+        <p id="login-error" class="text-red-500 text-sm font-semibold mt-3 hidden">Incorrect PIN.</p>
+    </div>
+
+    <!-- DASHBOARD SCREEN -->
+    <div id="dashboard-screen" class="max-w-7xl mx-auto hidden fade-in">
+        <div class="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
+            <div>
+                <h1 class="text-3xl font-black text-primary tracking-tight">Loyalty Records</h1>
+                <p class="text-sm text-gray-500 font-medium mt-1">Manage and view all customer visits.</p>
+            </div>
+            <div class="relative w-full sm:w-72">
+                <i class="fa-solid fa-search absolute left-4 top-3.5 text-gray-400"></i>
+                <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Search by name, phone, or ID..." class="w-full border border-gray-300 rounded-xl pl-10 pr-4 py-2.5 font-medium text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm">
+            </div>
+        </div>
+
+        <!-- STATS CARDS -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-4">
+                <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xl"><i class="fa-solid fa-users"></i></div>
+                <div><p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Total Customers</p><p id="stat-total" class="text-2xl font-black text-gray-800">0</p></div>
+            </div>
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-4">
+                <div class="w-12 h-12 rounded-full bg-warning/20 flex items-center justify-center text-yellow-600 text-xl"><i class="fa-solid fa-stamp"></i></div>
+                <div><p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Total Stamps Given</p><p id="stat-stamps" class="text-2xl font-black text-gray-800">0</p></div>
+            </div>
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-4">
+                <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-xl"><i class="fa-solid fa-trophy"></i></div>
+                <div><p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Completed Cards</p><p id="stat-completed" class="text-2xl font-black text-gray-800">0</p></div>
+            </div>
+        </div>
+
+        <!-- TABLE -->
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse" id="dataTable">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-200 text-xs uppercase tracking-wider text-gray-500 font-bold">
+                            <th class="p-4 cursor-pointer hover:bg-gray-100" onclick="sortTable(0)">Card ID <i class="fa-solid fa-sort ml-1"></i></th>
+                            <th class="p-4 cursor-pointer hover:bg-gray-100" onclick="sortTable(1)">Customer Name <i class="fa-solid fa-sort ml-1"></i></th>
+                            <th class="p-4 cursor-pointer hover:bg-gray-100" onclick="sortTable(2)">Phone <i class="fa-solid fa-sort ml-1"></i></th>
+                            <th class="p-4 cursor-pointer hover:bg-gray-100 text-center" onclick="sortTable(3, true)">Visits <i class="fa-solid fa-sort ml-1"></i></th>
+                            <th class="p-4 cursor-pointer hover:bg-gray-100">Last Branch</th>
+                            <th class="p-4 cursor-pointer hover:bg-gray-100" onclick="sortTable(5)">Last Visit Date <i class="fa-solid fa-sort ml-1"></i></th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="text-sm font-medium">
+                        <tr><td colspan="6" class="p-8 text-center text-gray-400"><i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Loading data...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "https://sheetdb.io/api/v1/im2qg2cit3cco";
+        let allData = [];
+
+        function login() {
+            const pin = document.getElementById('adminPin').value;
+            if (pin === "2010") { // Admin PIN
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('dashboard-screen').classList.remove('hidden');
+                fetchData();
+            } else {
+                document.getElementById('login-error').classList.remove('hidden');
+            }
+        }
+
+        document.getElementById('adminPin').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') login();
+        });
+
+        async function fetchData() {
+            try {
+                const res = await fetch(API_URL);
+                const data = await res.json();
+                // Filter out empty rows generated by empty Excel cells
+                allData = data.filter(row => row.id && row.id.trim() !== ""); 
+                renderTable();
+                updateStats();
+            } catch (err) {
+                document.getElementById('tableBody').innerHTML = '<tr><td colspan="6" class="p-8 text-center text-red-500 font-bold">Failed to load data. Check network or API limit.</td></tr>';
+            }
+        }
+
+        function extractLastBranch(historyStr) {
+            if (!historyStr) return "—";
+            const logs = historyStr.split('|').filter(Boolean);
+            if (logs.length === 0) return "—";
+            const lastLog = logs[logs.length - 1];
+            if (lastLog.includes('@')) {
+                return lastLog.split('@')[1];
+            }
+            return "Unknown";
+        }
+
+        function updateStats() {
+            const totalCustomers = allData.filter(u => u.name && u.name.trim() !== "").length;
+            const totalStamps = allData.reduce((sum, u) => sum + (parseInt(u.visits) || 0), 0);
+            const completedCards = allData.filter(u => parseInt(u.visits) >= 9).length;
+
+            document.getElementById('stat-total').textContent = totalCustomers;
+            document.getElementById('stat-stamps').textContent = totalStamps;
+            document.getElementById('stat-completed').textContent = completedCards;
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+
+            // Only show users who have registered (have a name)
+            const registeredUsers = allData.filter(u => u.name && u.name.trim() !== "");
+
+            if (registeredUsers.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-gray-400">No registered customers yet.</td></tr>';
+                return;
+            }
+
+            // Sort by latest visit by default
+            registeredUsers.sort((a, b) => {
+                const dateA = new Date(a.last_visit || 0);
+                const dateB = new Date(b.last_visit || 0);
+                return dateB - dateA; // Descending
+            });
+
+            registeredUsers.forEach(user => {
+                const visits = parseInt(user.visits) || 0;
+                const branch = extractLastBranch(user.history);
+                const badgeClass = visits >= 9 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700';
+
+                const tr = document.createElement('tr');
+                tr.className = 'border-b border-gray-100 transition-colors';
+                tr.innerHTML = `
+                    <td class="p-4 text-gray-500 font-semibold">#${user.id}</td>
+                    <td class="p-4 font-bold text-gray-800">${user.name || '—'}</td>
+                    <td class="p-4 text-gray-600">${user.phone || '—'}</td>
+                    <td class="p-4 text-center">
+                        <span class="${badgeClass} px-2.5 py-1 rounded-md text-xs font-black tracking-widest">${visits}/9</span>
+                    </td>
+                    <td class="p-4 text-gray-600">${branch}</td>
+                    <td class="p-4 text-gray-600">${user.last_visit || '—'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterTable() {
+            const input = document.getElementById("searchInput");
+            const filter = input.value.toLowerCase();
+            const table = document.getElementById("dataTable");
+            const tr = table.getElementsByTagName("tr");
+
+            for (let i = 1; i < tr.length; i++) {
+                let showRow = false;
+                const tds = tr[i].getElementsByTagName("td");
+                for (let j = 0; j < 3; j++) { // Only search ID, Name, Phone
+                    if (tds[j]) {
+                        const txtValue = tds[j].textContent || tds[j].innerText;
+                        if (txtValue.toLowerCase().indexOf(filter) > -1) {
+                            showRow = true;
+                            break;
+                        }
+                    }
+                }
+                tr[i].style.display = showRow ? "" : "none";
+            }
+        }
+
+        let sortDirection = false;
+        function sortTable(columnIndex, isNumeric = false) {
+            const table = document.getElementById("dataTable");
+            let switching = true;
+            let shouldSwitch = false;
+            sortDirection = !sortDirection; // toggle direction
+
+            while (switching) {
+                switching = false;
+                const rows = table.rows;
+                for (let i = 1; i < (rows.length - 1); i++) {
+                    shouldSwitch = false;
+                    let x = rows[i].getElementsByTagName("TD")[columnIndex];
+                    let y = rows[i + 1].getElementsByTagName("TD")[columnIndex];
+                    
+                    let valX = x.textContent || x.innerText;
+                    let valY = y.textContent || y.innerText;
+
+                    if (isNumeric) {
+                        valX = parseInt(valX.split('/')[0]) || 0;
+                        valY = parseInt(valY.split('/')[0]) || 0;
+                        if (sortDirection ? (valX > valY) : (valX < valY)) {
+                            shouldSwitch = true;
+                            break;
+                        }
+                    } else {
+                        if (sortDirection ? (valX.toLowerCase() > valY.toLowerCase()) : (valX.toLowerCase() < valY.toLowerCase())) {
+                            shouldSwitch = true;
+                            break;
+                        }
+                    }
+                }
+                if (shouldSwitch) {
+                    rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                    switching = true;
+                }
+            }
+        }
+    </script>
+</body>
+</html>
