@@ -152,9 +152,9 @@ function getRewardName(visits) {
     return "Free Reward";
 }
 
-const PrimaryButton = (label, onClick) => `<button onclick="${onClick}" id="${onClick.split('(')[0]}Btn" class="btn-primary">${label}</button>`;
+const PrimaryButton = (label, onClick) => `<button onclick="${onClick}" id="${onClick.split('(')[0]}Btn" class="btn-primary mb-3">${label}</button>`;
 
-const SecondaryButton = (label, onClick) => `<button onclick="${onClick}" class="w-full bg-surfaceVariant text-onSurfaceVariant rounded-full py-4 font-bold text-sm uppercase tracking-wider">${label}</button>`;
+const SecondaryButton = (label, onClick) => `<button onclick="${onClick}" class="w-full bg-surfaceVariant text-onSurfaceVariant rounded-full py-4 md:py-3.5 font-bold text-sm md:text-xs uppercase tracking-wider active:scale-95 transition-transform">${label}</button>`;
 
 const OutlinedTextField = (id, label, placeholder, type = 'text', additionalHTML = '') => `
     <div class="mb-4 text-left">
@@ -499,9 +499,9 @@ function render(view = 'default') {
         const isNextReward = !isRewardEarned && !isCardComplete && (visits + 1) % 3 === 0;
 
         const profileHeader = `
-            <p class="text-sm font-semibold text-primary mb-5">${BRAND_NAME}</p>
-            <h2 class="text-xl font-bold text-gray-800 mb-1 tracking-tight leading-tight">${escapeHTML(g.headline)}</h2>
-            <p class="text-sm text-onSurfaceVariant font-medium mb-7">${escapeHTML(g.tagline)}</p>
+            <p class="text-sm font-semibold text-primary mb-4 md:mb-3 md:text-xs">${BRAND_NAME}</p>
+            <h2 class="text-xl font-bold text-gray-800 mb-1 tracking-tight leading-tight md:text-lg">${escapeHTML(g.headline)}</h2>
+            <p class="text-sm text-onSurfaceVariant font-medium mb-6 md:mb-5 md:text-xs">${escapeHTML(g.tagline)}</p>
 
             <div class="relative w-full bg-surfaceVariant h-5 rounded-full mb-6 p-1 shadow-inner">
                 <div id="pBar" class="progress-transition bg-primary h-full rounded-full" style="width: 0%"></div>

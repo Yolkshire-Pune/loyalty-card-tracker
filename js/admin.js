@@ -196,6 +196,54 @@ function renderTable() {
     if(document.getElementById('stat-active')) document.getElementById('stat-active').textContent = activeCards;
     document.getElementById('stat-completed').textContent = completedCards;
 
+    // Render Redemption Stats
+    const bev = filtered.filter(u => parseInt(u.visits) >= 4).length;
+    const des = filtered.filter(u => parseInt(u.visits) >= 7).length;
+    const meal = filtered.filter(u => parseInt(u.visits) >= 10).length;
+    
+    const redContainer = document.getElementById('redemption-stats');
+    if(redContainer) {
+        redContainer.innerHTML = `
+            <div class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Beverage Redeemed</p>
+                <p class="text-xl font-black text-gray-800">${bev} <span class="text-xs font-medium text-gray-400">(${totalCustomers ? ((bev/totalCustomers)*100).toFixed(0) : 0}%)</span></p>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Dessert Redeemed</p>
+                <p class="text-xl font-black text-gray-800">${des} <span class="text-xs font-medium text-gray-400">(${totalCustomers ? ((des/totalCustomers)*100).toFixed(0) : 0}%)</span></p>
+            </div>
+            <div class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Meal Redeemed</p>
+                <p class="text-xl font-black text-gray-800">${meal} <span class="text-xs font-medium text-gray-400">(${totalCustomers ? ((meal/totalCustomers)*100).toFixed(0) : 0}%)</span></p>
+            </div>
+        `;
+    }
+
+    // Branch Performance
+    const branchStats = {};
+    filtered.forEach(u => {
+        const hist = extractHistoryDetails(u.history);
+        if (hist.length) {
+            const b = hist[0].branch || 'Other';
+            branchStats[b] = (branchStats[b] || 0) + 1;
+        }
+    });
+
+    const branchContainer = document.getElementById('branch-performance');
+    if (branchContainer) {
+        let branchHTML = '<h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Branch Performance (Cards Active at)</h3><div class="grid grid-cols-2 sm:grid-cols-4 gap-4">';
+        Object.entries(branchStats).sort((a,b) => b[1] - a[1]).forEach(([name, count]) => {
+            branchHTML += `
+                <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                    <p class="text-[9px] font-bold text-gray-500 uppercase truncate">${name}</p>
+                    <p class="text-lg font-black text-primary">${count}</p>
+                </div>
+            `;
+        });
+        branchHTML += '</div>';
+        branchContainer.innerHTML = branchHTML;
+    }
+
     if (filtered.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-gray-400">No matching records found.</td></tr>';
         return;
