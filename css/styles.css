@@ -81,15 +81,90 @@ body { overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
 
 /* --- Unified Button System --- */
 .btn-primary {
-    @apply w-full bg-primary text-white rounded-xl py-4 md:py-3 font-bold text-sm md:text-xs uppercase tracking-wider active:scale-95 transition-all shadow-md hover:shadow-lg disabled:bg-gray-300 disabled:text-gray-500 disabled:opacity-50 disabled:shadow-none;
+    width: 100%;
+    background-color: #0d6a37; /* primary */
+    color: #ffffff; /* white */
+    border-radius: 0.75rem; /* rounded-xl */
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+    font-weight: 700;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    transition: all 0.2s;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.btn-primary:active {
+    transform: scale(0.95);
+}
+
+.btn-primary:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    filter: brightness(1.1);
+}
+
+.btn-primary:disabled {
+    background-color: #e5e7eb;
+    color: #9ca3af;
+    cursor: not-allowed;
+    box-shadow: none;
+    opacity: 0.5;
+}
+
+@media (min-width: 768px) {
+    .btn-primary {
+        padding-top: 0.875rem;
+        padding-bottom: 0.875rem;
+        font-size: 0.75rem;
+    }
 }
 
 .btn-secondary {
-    @apply w-full bg-white border-2 border-gray-200 text-gray-800 hover:border-primary hover:text-primary transition-all rounded-2xl py-6 px-4 flex items-center justify-between group shadow-sm;
+    width: 100%;
+    background-color: #ffffff;
+    border: 2px solid #e5e7eb;
+    color: #1f2937;
+    border-radius: 1rem;
+    padding: 1.5rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.btn-secondary:hover {
+    border-color: #0d6a37;
+    color: #0d6a37;
 }
 
 .btn-choice {
-    @apply w-full bg-white border-2 border-gray-100 text-gray-800 hover:border-primary hover:text-primary transition-all rounded-3xl py-5 md:py-4 px-6 md:px-5 flex items-center justify-between group shadow-yolk;
+    width: 100%;
+    background-color: #ffffff;
+    border: 2px solid #f3f4f6;
+    color: #1f2937;
+    border-radius: 1.5rem;
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.2s;
+    cursor: pointer;
+    box-shadow: 0 8px 30px rgba(13, 106, 55, 0.05);
+}
+
+@media (min-width: 768px) {
+    .btn-choice {
+        padding: 1rem 1.25rem;
+    }
+}
+
+.btn-choice:hover {
+    border-color: #0d6a37;
+    color: #0d6a37;
 }
 
 .shadow-yolk { box-shadow: 0 8px 30px rgba(13, 106, 55, 0.05); }

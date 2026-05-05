@@ -291,10 +291,17 @@ function renderTable() {
                     const d = item.date;
                     const dateStr = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
                     const timeStr = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+                    
+                    const isActivation = item.visitNumber === 0;
+                    const isMilestone = item.visitNumber > 0 && item.visitNumber % 3 === 0;
+                    const title = isActivation ? "Card Collection" : `Visit #${item.visitNumber}`;
+                    const bgClass = (isMilestone || isActivation) ? 'bg-warning/10 border-warning/30' : 'bg-white border-gray-200';
+                    const icon = (isMilestone || isActivation) ? `<i class="fa-solid fa-${isActivation ? 'id-card' : 'gift'} text-warning mr-1.5"></i>` : '';
+
                     histHTML += `
-                        <div class="bg-white border border-gray-200 p-3 rounded-xl flex justify-between items-center">
+                        <div class="${bgClass} border p-3 rounded-xl flex justify-between items-center transition-all">
                             <div>
-                                <p class="text-xs font-bold text-gray-500 uppercase">Visit #${item.visitNumber}</p>
+                                <p class="text-[10px] font-bold text-gray-400 uppercase flex items-center">${icon}${title}</p>
                                 <p class="font-bold text-gray-800">${dateStr}</p>
                                 <p class="text-[10px] font-semibold text-gray-500 mt-1"><i class="fa-solid fa-location-dot mr-1"></i>${item.branch}</p>
                             </div>

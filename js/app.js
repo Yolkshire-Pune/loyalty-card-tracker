@@ -175,10 +175,10 @@ const HistoryItem = (d, visitIndex, branch) => {
     const isMilestone = visitIndex > 0 && visitIndex % 3 === 0;
     const isActivation = visitIndex === 0;
     const titleText = isActivation ? "Card Collection Date" : `Visit #${visitIndex}`;
-    const baseClasses = isMilestone
+    const baseClasses = (isMilestone || isActivation)
         ? 'bg-warning/15 border border-warning/40'
         : 'bg-surfaceVariant border border-gray-100';
-    const icon = isMilestone ? '<i class="fa-solid fa-gift text-warning text-sm mr-1.5"></i>' : '';
+    const icon = (isMilestone || isActivation) ? `<i class="fa-solid fa-${isActivation ? 'id-card' : 'gift'} text-warning text-sm mr-1.5"></i>` : '';
     const chip = isMilestone
         ? `<span class="ml-2 text-[9px] font-black text-warning uppercase tracking-widest bg-warning/10 px-1.5 py-0.5 rounded-md border border-warning/30">${getRewardName(visitIndex)}</span>`
         : '';
@@ -526,7 +526,6 @@ function render(view = 'default') {
                 ${profileHeader}
                 <div class="bg-gradient-to-br from-warning/25 to-warning/5 border-2 border-warning reward-glow rounded-3xl p-6 mb-6 text-center">
                     <i class="fa-solid fa-trophy text-warning text-5xl mb-3 gift-wiggle"></i>
-                    <h3 class="text-lg font-black text-primary tracking-tight leading-tight mb-2">FREE MEAL UNLOCKED!</h3>
                     <p class="text-sm text-onSurface font-bold mb-2">🎉 Yayy, you're a certified Eggomaniac now</p>
                     <p class="text-sm text-onSurface font-medium mb-4">
                         You've collected all 9 stamps and earned a Free Meal. Thank you for being part of ${BRAND_NAME}!
