@@ -465,8 +465,18 @@
         }
 
         // --- MAIN APP LOGIC ---
+        function handleManualId() {
+            const input = document.getElementById('manualCardId');
+            if (input) {
+                const id = input.value.trim().toUpperCase();
+                if (id) {
+                    window.location.href = '?id=' + encodeURIComponent(id);
+                }
+            }
+        }
+
         async function init() {
-            if (!cardId) return showError("Invalid QR Code.");
+            if (!cardId) return render('home');
             try {
                 const res = await fetch(`${API_URL}/search?id=${encodeURIComponent(cardId)}`);
                 const data = await res.json();
@@ -481,8 +491,68 @@
             document.getElementById('app').classList.remove('hidden');
             const container = document.getElementById('main-content');
 
+            // --- VIEW: HOME (Landing Page) ---
+            if (view === 'home') {
+                container.innerHTML = `
+                    <p class="text-sm font-semibold text-primary mb-8">${BRAND_NAME}</p>
+                    <h1 class="text-2xl font-bold text-gray-800 mb-8 tracking-tight">Who's checking in?</h1>
+                    
+                    <div class="space-y-4">
+                        <button onclick="render('customer_entry')" class="w-full bg-surface border-2 border-primary text-primary hover:bg-primary hover:text-white transition-colors rounded-2xl py-6 px-4 flex items-center justify-between group shadow-sm">
+                            <div class="flex items-center gap-4">
+                                <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-white/20 group-hover:text-white transition-colors">
+                                    <i class="fa-solid fa-user text-xl"></i>
+                                </div>
+                                <div class="text-left">
+                                    <h2 class="text-lg font-bold">I am a Customer</h2>
+                                    <p class="text-xs font-medium opacity-80">View your loyalty card</p>
+                                </div>
+                            </div>
+                            <i class="fa-solid fa-chevron-right text-gray-300 group-hover:text-white transition-colors"></i>
+                        </button>
+
+                        <button onclick="window.location.href='admin.html'" class="w-full bg-surface border-2 border-gray-200 text-gray-600 hover:border-gray-800 hover:text-gray-800 transition-colors rounded-2xl py-6 px-4 flex items-center justify-between group shadow-sm">
+                            <div class="flex items-center gap-4">
+                                <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 group-hover:bg-gray-200 group-hover:text-gray-800 transition-colors">
+                                    <i class="fa-solid fa-shield-halved text-xl"></i>
+                                </div>
+                                <div class="text-left">
+                                    <h2 class="text-lg font-bold">I am an Admin</h2>
+                                    <p class="text-xs font-medium opacity-80">Manage customer records</p>
+                                </div>
+                            </div>
+                            <i class="fa-solid fa-chevron-right text-gray-300 group-hover:text-gray-800 transition-colors"></i>
+                        </button>
+                    </div>
+                `;
+            }
+            // --- VIEW: CUSTOMER ENTRY ---
+            else if (view === 'customer_entry') {
+                container.innerHTML = `
+                    <p class="text-sm font-semibold text-primary mb-4">${BRAND_NAME}</p>
+                    <h2 class="text-xl font-bold text-gray-800 mb-2 tracking-tight">Find Your Card</h2>
+                    
+                    <!-- Space reserved for 3D flipping card animation (to be implemented) -->
+                    <div class="w-full h-40 bg-gray-100 rounded-2xl mb-6 flex items-center justify-center border-2 border-dashed border-gray-300">
+                        <p class="text-xs text-gray-400 font-semibold uppercase tracking-widest"><i class="fa-solid fa-image mr-2"></i>Card Animation Placeholder</p>
+                    </div>
+
+                    <p class="text-sm text-gray-600 mb-6 font-medium leading-relaxed text-left">
+                        To view your loyalty card, simply scan the QR code on your physical card using your phone's camera.
+                        <br><br>
+                        Alternatively, enter the 7-character ID printed below your QR code here:
+                    </p>
+
+                    <div class="flex gap-2 mb-4">
+                        <input type="text" id="manualCardId" placeholder="e.g., YSLC001" class="flex-1 border border-outline rounded-xl px-4 py-3.5 font-bold text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary uppercase transition-all">
+                        <button onclick="handleManualId()" class="bg-primary text-white rounded-xl px-6 font-bold uppercase tracking-wider active:scale-95 transition-transform"><i class="fa-solid fa-arrow-right"></i></button>
+                    </div>
+                    
+                    ${SecondaryButton("Back", "render('home')")}
+                `;
+            }
             // --- VIEW: SCAN (Initial) ---
-            if (!currentUser.name && view === 'default') {
+            else if (!currentUser?.name && view === 'default') {
                 container.innerHTML = `
                     <div class="p-6">
                         <p class="text-sm font-semibold text-primary mb-6">${BRAND_NAME}</p>
