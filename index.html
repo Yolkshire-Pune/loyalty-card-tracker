@@ -34,7 +34,7 @@
         }
     </script>
     <style>
-        html, body { height: 100%; margin: 0; padding: 0; overflow-x: hidden; }
+        html, body { margin: 0; padding: 0; overflow-x: hidden; }
         .progress-transition { transition: width 1s cubic-bezier(0.4, 0, 0.2, 1); }
         .yolk-shadow { box-shadow: 0 16px 40px rgba(13, 106, 55, 0.08); }
         .fade-in { animation: fadeIn 0.3s ease-out; }
@@ -115,9 +115,9 @@
         }
     </style>
 </head>
-<body class="bg-yolkBg flex items-center justify-center p-4 min-h-screen text-onSurface font-medium antialiased">
+<body class="bg-yolkBg flex flex-col items-center justify-center py-8 px-4 min-h-screen text-onSurface font-medium antialiased">
 
-    <div id="app" class="bg-surface w-full max-w-sm sm:max-w-md rounded-3xl yolk-shadow p-6 text-center hidden border border-gray-50 fade-in">
+    <div id="app" class="bg-surface w-full max-w-sm sm:max-w-md rounded-3xl yolk-shadow p-6 text-center hidden border border-gray-50 fade-in m-auto relative">
         <a href="https://yolkshire.com" target="_blank" rel="noopener" class="block w-32 mx-auto mb-6" aria-label="Visit yolkshire.com">
             <img src="yolkshire-new-logo-fhd.png" alt="Yolkshire's Golden Yolk Loyalty Program" class="w-full block">
         </a>
@@ -125,7 +125,7 @@
     </div>
 
     <!-- Skeleton Loader (profile-shaped) -->
-    <div id="loader" class="bg-surface w-full max-w-sm sm:max-w-md rounded-3xl yolk-shadow p-6 border border-gray-50">
+    <div id="loader" class="bg-surface w-full max-w-sm sm:max-w-md rounded-3xl yolk-shadow p-6 border border-gray-50 m-auto">
         <div class="skeleton w-32 h-10 mx-auto mb-6"></div>
         <div class="skeleton h-3 w-24 mx-auto mb-2"></div>
         <div class="skeleton h-6 w-3/4 mx-auto mb-2"></div>
@@ -498,30 +498,30 @@
                     <h1 class="text-2xl font-bold text-gray-800 mb-8 tracking-tight">Who's checking in?</h1>
                     
                     <div class="space-y-4">
-                        <button onclick="render('customer_entry')" class="w-full bg-surface border-2 border-primary text-primary hover:bg-primary hover:text-white transition-colors rounded-2xl py-6 px-4 flex items-center justify-between group shadow-sm">
+                        <button onclick="render('customer_entry')" class="w-full bg-surface border-2 border-gray-200 text-gray-800 hover:border-primary hover:text-primary transition-all rounded-2xl py-6 px-4 flex items-center justify-between group shadow-sm">
                             <div class="flex items-center gap-4">
-                                <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:bg-white/20 group-hover:text-white transition-colors">
+                                <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 group-hover:bg-primary/10 group-hover:text-primary transition-all">
                                     <i class="fa-solid fa-user text-xl"></i>
                                 </div>
                                 <div class="text-left">
                                     <h2 class="text-lg font-bold">I am a Customer</h2>
-                                    <p class="text-xs font-medium opacity-80">View your loyalty card</p>
+                                    <p class="text-xs text-gray-500 font-medium group-hover:text-primary/80 transition-colors">View your loyalty card</p>
                                 </div>
                             </div>
-                            <i class="fa-solid fa-chevron-right text-gray-300 group-hover:text-white transition-colors"></i>
+                            <i class="fa-solid fa-chevron-right text-gray-300 group-hover:text-primary transition-colors"></i>
                         </button>
 
-                        <button onclick="window.location.href='admin.html'" class="w-full bg-surface border-2 border-gray-200 text-gray-600 hover:border-gray-800 hover:text-gray-800 transition-colors rounded-2xl py-6 px-4 flex items-center justify-between group shadow-sm">
+                        <button onclick="window.location.href='admin.html'" class="w-full bg-surface border-2 border-gray-200 text-gray-800 hover:border-primary hover:text-primary transition-all rounded-2xl py-6 px-4 flex items-center justify-between group shadow-sm">
                             <div class="flex items-center gap-4">
-                                <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 group-hover:bg-gray-200 group-hover:text-gray-800 transition-colors">
+                                <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 group-hover:bg-primary/10 group-hover:text-primary transition-all">
                                     <i class="fa-solid fa-shield-halved text-xl"></i>
                                 </div>
                                 <div class="text-left">
                                     <h2 class="text-lg font-bold">I am an Admin</h2>
-                                    <p class="text-xs font-medium opacity-80">Manage customer records</p>
+                                    <p class="text-xs text-gray-500 font-medium group-hover:text-primary/80 transition-colors">Manage customer records</p>
                                 </div>
                             </div>
-                            <i class="fa-solid fa-chevron-right text-gray-300 group-hover:text-gray-800 transition-colors"></i>
+                            <i class="fa-solid fa-chevron-right text-gray-300 group-hover:text-primary transition-colors"></i>
                         </button>
                     </div>
                 `;
@@ -529,6 +529,9 @@
             // --- VIEW: CUSTOMER ENTRY ---
             else if (view === 'customer_entry') {
                 container.innerHTML = `
+                    <div class="absolute top-6 left-6 text-gray-400 hover:text-gray-800 transition-colors cursor-pointer" onclick="render('home')">
+                        <i class="fa-solid fa-arrow-left text-xl"></i>
+                    </div>
                     <p class="text-sm font-semibold text-primary mb-4">${BRAND_NAME}</p>
                     <h2 class="text-xl font-bold text-gray-800 mb-2 tracking-tight">Find Your Card</h2>
                     
@@ -543,12 +546,10 @@
                         Alternatively, enter the 7-character ID printed below your QR code here:
                     </p>
 
-                    <div class="flex gap-2 mb-4">
+                    <div class="flex gap-2">
                         <input type="text" id="manualCardId" placeholder="e.g., YSLC001" class="flex-1 border border-outline rounded-xl px-4 py-3.5 font-bold text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary uppercase transition-all">
                         <button onclick="handleManualId()" class="bg-primary text-white rounded-xl px-6 font-bold uppercase tracking-wider active:scale-95 transition-transform"><i class="fa-solid fa-arrow-right"></i></button>
                     </div>
-                    
-                    ${SecondaryButton("Back", "render('home')")}
                 `;
             }
             // --- VIEW: SCAN (Initial) ---
@@ -614,6 +615,23 @@
                     <p class="text-primary font-semibold mb-6">Golden Yolk Loyalty Program</p>
                     ${OutlinedTextField("regName", "Full Name", "John Doe")}
                     ${OutlinedTextField("regPhone", "Phone Number", "9876543210", "tel", isdHTML)}
+                    <div class="mt-4 text-left">
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">Collection Branch</label>
+                        <div class="relative">
+                            <select id="regBranch" class="w-full border-2 border-gray-200 rounded-xl px-4 py-3.5 font-bold text-sm text-gray-800 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 appearance-none bg-white transition-all">
+                                <option value="" disabled selected>Select Branch...</option>
+                                <option value="Kothrud">Kothrud</option>
+                                <option value="Aundh">Aundh</option>
+                                <option value="Salunkhe Vihar">Salunkhe Vihar</option>
+                                <option value="Pimple Saudagar">Pimple Saudagar</option>
+                                <option value="Wadgaon Sheri">Wadgaon Sheri</option>
+                                <option value="Wakad">Wakad</option>
+                                <option value="PYC">PYC</option>
+                                <option value="Bavdhan">Bavdhan</option>
+                            </select>
+                            <i class="fa-solid fa-chevron-down absolute right-4 top-4 text-gray-400 pointer-events-none"></i>
+                        </div>
+                    </div>
                     <div class="mt-8">${PrimaryButton("Complete Activation", "handleRegistration()")}</div>
                 `;
             }
@@ -632,6 +650,7 @@
             // --- VIEW: PROFILE ---
             else if (view === 'default' || view === 'profile') {
                 const visits = parseInt(currentUser.visits) || 0;
+                const displayVisits = Math.max(1, visits);
                 const progress = Math.min((visits / 9) * 100, 100);
                 const firstName = escapeHTML((currentUser.name || '').split(' ')[0]);
                 const g = getGreeting(firstName);
@@ -650,7 +669,7 @@
 
                     <div class="flex justify-between items-center mb-8 px-2 border-b border-gray-100 pb-8 gap-4">
                         <div class="text-left leading-none flex items-baseline">
-                            <span class="text-6xl font-black text-primary">${visits}</span>
+                            <span class="text-6xl font-black text-primary">${displayVisits}</span>
                             <span class="text-xl text-onSurfaceVariant font-bold">/ 9</span>
                         </div>
                         <div class="grid grid-cols-2 gap-x-4 gap-y-2">
@@ -668,6 +687,7 @@
                         <div class="bg-gradient-to-br from-warning/25 to-warning/5 border-2 border-warning reward-glow rounded-3xl p-6 mb-6 text-center">
                             <i class="fa-solid fa-trophy text-warning text-5xl mb-3 gift-wiggle"></i>
                             <h3 class="text-lg font-black text-primary tracking-tight leading-tight mb-2">FREE MEAL UNLOCKED!</h3>
+                            <p class="text-sm text-onSurface font-bold mb-2">🎉 Yayy, you're a certified Eggomaniac now</p>
                             <p class="text-sm text-onSurface font-medium mb-4">
                                 You've collected all 9 stamps and earned a Free Meal. Thank you for being part of ${BRAND_NAME}!
                             </p>
@@ -700,7 +720,7 @@
 
                     const nextRewardName = getRewardName(visits + 1);
                     const nextRewardPill = isNextReward ? `
-                        <div class="mb-4 py-1.5 px-3 bg-warning bg-opacity-10 text-primary text-[10px] font-black uppercase tracking-widest border border-warning border-opacity-20 rounded-lg text-center">Stamp #${visits + 1} unlocks a ${nextRewardName} 🎁</div>
+                        <div class="mb-4 py-1.5 px-3 bg-warning bg-opacity-10 text-primary text-[10px] font-black uppercase tracking-widest border border-warning border-opacity-20 rounded-lg text-center">${nextRewardName} on next visit</div>
                     ` : '';
 
                     container.innerHTML = `
@@ -778,6 +798,10 @@
             const rawName = document.getElementById('regName').value;
             const isd = document.getElementById('isd').value;
             const rawPhone = document.getElementById('regPhone').value;
+            const branchSelect = document.getElementById('regBranch');
+            const branchName = branchSelect ? branchSelect.value : '';
+
+            if (!branchName) return showDialog("Select Branch", "Please select the collection branch.");
 
             const name = sanitizeName(rawName);
             if (!name) return showDialog("Invalid Name", "Please enter a valid name (2-50 letters, spaces or dots).");
@@ -801,10 +825,13 @@
                     return showDialog("Global Limit Reached", "This phone number has already reached the maximum of 9 visits across all Yolkshire loyalty cards. Contact management for a new master card.");
                 }
 
+                const todayStr = new Date().toISOString();
+                const historyLog = `${todayStr}@${branchName}`;
+
                 await fetch(`${API_URL}/id/${encodeURIComponent(cardId)}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, phone: fullPhone, visits: 0 })
+                    body: JSON.stringify({ name, phone: fullPhone, visits: 0, last_visit: todayStr, history: historyLog })
                 });
                 render('success');
             } catch (err) {
@@ -919,7 +946,7 @@
     </script>
 
     <!-- Admin Link -->
-    <a href="admin.html" class="fixed bottom-4 right-4 w-10 h-10 bg-surfaceVariant text-onSurfaceVariant rounded-full flex items-center justify-center shadow-md hover:bg-primary hover:text-white transition-colors z-40 opacity-50 hover:opacity-100" aria-label="Admin Dashboard" title="Admin Dashboard">
+    <a href="admin.html" id="admin-link" class="fixed bottom-4 right-4 w-10 h-10 bg-surfaceVariant text-onSurfaceVariant rounded-full flex items-center justify-center shadow-md hover:bg-primary hover:text-white transition-colors z-40 opacity-50 hover:opacity-100" aria-label="Admin Dashboard" title="Admin Dashboard">
         <i class="fa-solid fa-lock text-sm"></i>
     </a>
 </body>

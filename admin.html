@@ -36,7 +36,10 @@
 <body class="bg-gray-100 min-h-screen text-gray-800 antialiased p-4 sm:p-8">
 
     <!-- LOGIN SCREEN -->
-    <div id="login-screen" class="max-w-md mx-auto bg-white rounded-3xl shadow-lg p-8 mt-20 text-center fade-in">
+    <div id="login-screen" class="max-w-md mx-auto bg-white rounded-3xl shadow-lg p-8 mt-20 text-center fade-in relative">
+        <div class="absolute top-6 left-6 text-gray-400 hover:text-gray-800 transition-colors cursor-pointer" onclick="window.location.href='index.html'">
+            <i class="fa-solid fa-arrow-left text-xl"></i>
+        </div>
         <h1 class="text-2xl font-bold text-primary mb-2">Admin Dashboard</h1>
         <p class="text-sm text-gray-500 mb-6">Enter your details to access records</p>
         <input type="text" id="adminName" placeholder="Admin Name" class="w-full border border-gray-300 rounded-xl px-4 py-3 font-bold text-center mb-4 outline-none focus:border-primary focus:ring-1 focus:ring-primary">
@@ -64,18 +67,25 @@
                 <!-- Rendered dynamically -->
             </div>
             <div class="flex flex-wrap gap-4">
-                <select id="statusFilter" onchange="renderTable()" class="border border-gray-300 rounded-xl px-4 py-2 font-medium text-sm outline-none focus:border-primary">
+                <select id="statusFilter" onchange="renderTable()" class="border border-gray-300 rounded-xl pl-4 pr-8 py-2 font-medium text-sm outline-none focus:border-primary">
                     <option value="All">All Statuses</option>
                     <option value="Completed">Completed (9 visits)</option>
                     <option value="Uncompleted">Uncompleted</option>
                 </select>
-                <select id="dateFilter" onchange="renderTable()" class="border border-gray-300 rounded-xl px-4 py-2 font-medium text-sm outline-none focus:border-primary">
+                <select id="dateFilter" onchange="toggleCustomDateRange()" class="border border-gray-300 rounded-xl pl-4 pr-8 py-2 font-medium text-sm outline-none focus:border-primary">
                     <option value="All">All Time (Last Visit)</option>
                     <option value="Today">Today</option>
                     <option value="ThisWeek">This Week</option>
+                    <option value="Last7Days">Last 7 Days</option>
                     <option value="ThisMonth">This Month</option>
-                    <option value="ThisYear">This Year</option>
+                    <option value="Last30Days">Last 30 Days</option>
+                    <option value="Custom">Custom Range</option>
                 </select>
+                <div id="customDateRange" class="hidden items-center gap-2">
+                    <input type="date" id="startDate" onchange="renderTable()" class="border border-gray-300 rounded-xl px-4 py-2 font-medium text-sm outline-none focus:border-primary">
+                    <span class="text-gray-500">to</span>
+                    <input type="date" id="endDate" onchange="renderTable()" class="border border-gray-300 rounded-xl px-4 py-2 font-medium text-sm outline-none focus:border-primary">
+                </div>
             </div>
         </div>
 
@@ -83,15 +93,15 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-4">
                 <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xl"><i class="fa-solid fa-users"></i></div>
-                <div><p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Filtered Customers</p><p id="stat-total" class="text-2xl font-black text-gray-800">0</p></div>
+                <div><p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Customers</p><p id="stat-total" class="text-2xl font-black text-gray-800">0</p></div>
             </div>
             <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-4">
                 <div class="w-12 h-12 rounded-full bg-warning/20 flex items-center justify-center text-yellow-600 text-xl"><i class="fa-solid fa-stamp"></i></div>
-                <div><p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Filtered Stamps</p><p id="stat-stamps" class="text-2xl font-black text-gray-800">0</p></div>
+                <div><p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Stamps</p><p id="stat-stamps" class="text-2xl font-black text-gray-800">0</p></div>
             </div>
             <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-4">
                 <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-xl"><i class="fa-solid fa-trophy"></i></div>
-                <div><p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Filtered Completed</p><p id="stat-completed" class="text-2xl font-black text-gray-800">0</p></div>
+                <div><p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Completed</p><p id="stat-completed" class="text-2xl font-black text-gray-800">0</p></div>
             </div>
         </div>
 
@@ -202,12 +212,17 @@
             }).reverse(); // newest first
         }
 
-        function isDateInRange(dateStr, rangeType) {
-            if (!dateStr || dateStr === '—') return false;
-            // Assumes DD/MM/YYYY format from toLocaleDateString('en-IN')
-            // For proper parsing, we use the actual Date objects if possible. 
-            // Let's just compare actual Date objects parsed from history if possible.
-            return true; // Implemented below properly using history logs
+        function toggleCustomDateRange() {
+            const dateFilter = document.getElementById('dateFilter').value;
+            const customDateRange = document.getElementById('customDateRange');
+            if (dateFilter === 'Custom') {
+                customDateRange.classList.remove('hidden');
+                customDateRange.classList.add('flex');
+            } else {
+                customDateRange.classList.remove('flex');
+                customDateRange.classList.add('hidden');
+            }
+            renderTable();
         }
 
         function toggleRow(id) {
@@ -243,27 +258,53 @@
             }
 
             // Apply Date & Branch Filter
-            // If Date is not 'All' or Branch is not 'All', we check if their LATEST visit matches.
             const now = new Date();
+            let totalMatchingStamps = 0;
             
+            let customStart = null;
+            let customEnd = null;
+            if (dateFilter === 'Custom') {
+                const s = document.getElementById('startDate').value;
+                const e = document.getElementById('endDate').value;
+                if (s) customStart = new Date(s);
+                if (e) customEnd = new Date(e);
+                if (customEnd) customEnd.setHours(23, 59, 59, 999);
+            }
+
             filtered = filtered.filter(u => {
                 const history = extractHistoryDetails(u.history);
-                if (history.length === 0) return (dateFilter === 'All' && selectedBranch === 'All');
-                
-                const lastVisit = history[0];
-                
-                // Branch check
-                if (selectedBranch !== 'All' && lastVisit.branch !== selectedBranch) return false;
+                let matchingVisits = history;
 
-                // Date check
-                if (dateFilter !== 'All') {
-                    const diffDays = (now - lastVisit.date) / (1000 * 60 * 60 * 24);
-                    if (dateFilter === 'Today' && diffDays > 1) return false;
-                    if (dateFilter === 'ThisWeek' && diffDays > 7) return false;
-                    if (dateFilter === 'ThisMonth' && diffDays > 30) return false;
-                    if (dateFilter === 'ThisYear' && diffDays > 365) return false;
+                if (selectedBranch !== 'All') {
+                    matchingVisits = matchingVisits.filter(v => v.branch === selectedBranch);
                 }
-                return true;
+
+                if (dateFilter !== 'All') {
+                    matchingVisits = matchingVisits.filter(v => {
+                        if (!v.date || isNaN(v.date)) return false;
+                        if (dateFilter === 'Custom') {
+                            if (customStart && v.date < customStart) return false;
+                            if (customEnd && v.date > customEnd) return false;
+                            return true;
+                        }
+                        const diffDays = (now - v.date) / (1000 * 60 * 60 * 24);
+                        if (dateFilter === 'Today' && diffDays > 1) return false;
+                        if ((dateFilter === 'ThisWeek' || dateFilter === 'Last7Days') && diffDays > 7) return false;
+                        if ((dateFilter === 'ThisMonth' || dateFilter === 'Last30Days') && diffDays > 30) return false;
+                        if (dateFilter === 'ThisYear' && diffDays > 365) return false;
+                        return true;
+                    });
+                }
+
+                if (matchingVisits.length > 0 || (dateFilter === 'All' && selectedBranch === 'All')) {
+                    if (dateFilter !== 'All' || selectedBranch !== 'All') {
+                        totalMatchingStamps += matchingVisits.length;
+                    } else {
+                        totalMatchingStamps += parseInt(u.visits) || 0;
+                    }
+                    return true;
+                }
+                return false;
             });
 
             // Sort by latest visit
@@ -277,7 +318,7 @@
 
             // Update Stats for filtered
             const totalCustomers = filtered.length;
-            const totalStamps = filtered.reduce((sum, u) => sum + (parseInt(u.visits) || 0), 0);
+            const totalStamps = totalMatchingStamps;
             const completedCards = filtered.filter(u => parseInt(u.visits) >= 9).length;
             document.getElementById('stat-total').textContent = totalCustomers;
             document.getElementById('stat-stamps').textContent = totalStamps;
