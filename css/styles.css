@@ -1,0 +1,120 @@
+html, body { margin: 0; padding: 0; min-height: 100%; }
+body { overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
+.progress-transition { transition: width 1s cubic-bezier(0.4, 0, 0.2, 1); }
+.yolk-shadow { box-shadow: 0 16px 40px rgba(13, 106, 55, 0.08); }
+.fade-in { animation: fadeIn 0.3s ease-out; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* --- Dialog transitions (M3 emphasized easing) --- */
+#dialog { transition: opacity 0.25s cubic-bezier(0.2, 0, 0, 1); opacity: 0; pointer-events: none; }
+#dialog .dialog-panel {
+    transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1), opacity 0.25s cubic-bezier(0.2, 0, 0, 1);
+    transform: scale(0.92) translateY(8px); opacity: 0;
+}
+#dialog.dialog-open { opacity: 1; pointer-events: auto; }
+#dialog.dialog-open .dialog-panel { transform: scale(1) translateY(0); opacity: 1; }
+
+/* --- Skeleton shimmer --- */
+@keyframes shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
+.skeleton {
+    background: linear-gradient(90deg, #e1e5df 0%, #f0f2ef 50%, #e1e5df 100%);
+    background-size: 800px 100%;
+    animation: shimmer 1.4s linear infinite;
+    border-radius: 12px;
+}
+
+/* --- PIN dot bounce --- */
+@keyframes dotBounce { 0% { transform: scale(1); } 50% { transform: scale(1.4); } 100% { transform: scale(1); } }
+.pin-dot { transition: background-color 0.15s ease-out; }
+.pin-dot.filled { background: #0d6a37; animation: dotBounce 0.22s ease-out; }
+
+/* --- Hero reward state --- */
+.reward-glow {
+    box-shadow: 0 0 0 4px rgba(252, 195, 20, 0.15), 0 20px 50px rgba(252, 195, 20, 0.35);
+    animation: rewardPulse 2.5s ease-in-out infinite;
+}
+@keyframes rewardPulse {
+    0%, 100% { box-shadow: 0 0 0 4px rgba(252, 195, 20, 0.15), 0 20px 50px rgba(252, 195, 20, 0.35); }
+    50%      { box-shadow: 0 0 0 8px rgba(252, 195, 20, 0.25), 0 25px 60px rgba(252, 195, 20, 0.50); }
+}
+@keyframes giftBounce {
+    0%, 100% { transform: translateY(0) rotate(-4deg); }
+    50%      { transform: translateY(-6px) rotate(4deg); }
+}
+.gift-wiggle { display: inline-block; animation: giftBounce 1.4s ease-in-out infinite; transform-origin: center bottom; }
+
+/* --- History scroll fade edges --- */
+.history-scroll {
+    mask-image: linear-gradient(to bottom, transparent 0, #000 16px, #000 calc(100% - 24px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 16px, #000 calc(100% - 24px), transparent 100%);
+}
+
+/* --- Milestone overlay: egg crack + yolk pop --- */
+#milestone { transition: opacity 0.3s ease-out; }
+.egg-shell { width: 120px; height: 160px; position: relative; margin: 0 auto; }
+.egg-half {
+    position: absolute; left: 0; width: 120px; height: 78px;
+    background: linear-gradient(135deg, #fff8e0 0%, #fce9a1 65%, #f5d67a 100%);
+    box-shadow: inset -6px 0 16px rgba(200, 150, 20, 0.18), 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+.egg-top { top: 0; border-radius: 60px 60px 8px 8px; transform-origin: 50% 100%; }
+.egg-btm { bottom: 0; border-radius: 8px 8px 60px 60px; transform-origin: 50% 0%; }
+.milestone-active .egg-top { animation: eggTopCrack 0.7s cubic-bezier(0.4, 0, 0.2, 1) 0.2s forwards; }
+.milestone-active .egg-btm { animation: eggBtmCrack 0.7s cubic-bezier(0.4, 0, 0.2, 1) 0.2s forwards; }
+@keyframes eggTopCrack { 0% { transform: rotate(0) translate(0, 0); } 100% { transform: rotate(-35deg) translate(-50px, -30px); } }
+@keyframes eggBtmCrack { 0% { transform: rotate(0) translate(0, 0); } 100% { transform: rotate(35deg) translate(50px, 30px); } }
+
+.yolk-badge {
+    position: absolute; top: 50%; left: 50%; width: 110px; height: 110px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #ffd94a 0%, #fcc314 55%, #d79908 100%);
+    box-shadow: 0 0 40px rgba(252, 195, 20, 0.7), inset -8px -8px 16px rgba(200, 130, 0, 0.3);
+    display: flex; align-items: center; justify-content: center;
+    color: #0d6a37; font-weight: 900; font-size: 14px; letter-spacing: 0.05em; text-align: center;
+    transform: translate(-50%, -50%) scale(0); opacity: 0;
+}
+.milestone-active .yolk-badge { animation: yolkPop 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.7s forwards; }
+@keyframes yolkPop {
+    0%   { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+    60%  { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+
+/* --- Unified Button System --- */
+.btn-primary {
+    @apply w-full bg-primary text-white rounded-xl py-4 font-bold text-sm uppercase tracking-wider active:scale-95 transition-all shadow-md hover:shadow-lg disabled:bg-gray-300 disabled:text-gray-500 disabled:opacity-50 disabled:shadow-none;
+}
+
+.btn-secondary {
+    @apply w-full bg-white border-2 border-gray-200 text-gray-800 hover:border-primary hover:text-primary transition-all rounded-2xl py-6 px-4 flex items-center justify-between group shadow-sm;
+}
+
+.btn-choice {
+    @apply w-full bg-white border-2 border-gray-100 text-gray-800 hover:border-primary hover:text-primary transition-all rounded-3xl py-5 px-6 flex items-center justify-between group shadow-yolk;
+}
+
+.shadow-yolk { box-shadow: 0 8px 30px rgba(13, 106, 55, 0.05); }
+
+/* --- 3D Card Animation --- */
+.card-scene { width: 100%; height: 200px; perspective: 1000px; margin-bottom: 24px; }
+.card-container {
+    width: 100%; height: 100%; position: relative;
+    transform-style: preserve-3d;
+    animation: autoFlip 8s infinite linear;
+}
+@keyframes autoFlip {
+    0% { transform: rotateY(0deg); }
+    40% { transform: rotateY(0deg); }
+    50% { transform: rotateY(180deg); }
+    90% { transform: rotateY(180deg); }
+    100% { transform: rotateY(360deg); }
+}
+.card-face {
+    position: absolute; width: 100%; height: 100%;
+    backface-visibility: hidden;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 16px; overflow: hidden;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+}
+.card-front { background: #fff; }
+.card-back { background: #0d6a37; transform: rotateY(180deg); }
+.card-img { width: 100%; height: 100%; object-fit: cover; }

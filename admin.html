@@ -25,13 +25,7 @@
             }
         }
     </script>
-    <style>
-        body { font-family: 'Poppins', sans-serif; }
-        .fade-in { animation: fadeIn 0.3s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-        tr.main-row:hover { background-color: #f3f4f6; cursor: pointer; }
-        .history-row { background-color: #fafafa; }
-    </style>
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 <body class="bg-gray-100 min-h-screen text-gray-800 antialiased p-4 sm:p-8">
 
@@ -44,7 +38,7 @@
         <p class="text-sm text-gray-500 mb-6">Enter your details to access records</p>
         <input type="text" id="adminName" placeholder="Admin Name" class="w-full border border-gray-300 rounded-xl px-4 py-3 font-bold text-center mb-4 outline-none focus:border-primary focus:ring-1 focus:ring-primary">
         <input type="password" id="adminPin" placeholder="Admin PIN" class="w-full border border-gray-300 rounded-xl px-4 py-3 font-bold text-center mb-6 outline-none focus:border-primary focus:ring-1 focus:ring-primary">
-        <button onclick="login()" class="w-full bg-primary text-white rounded-xl py-3 font-bold uppercase tracking-wider active:scale-95 transition-transform">Access Dashboard</button>
+        <button onclick="login()" class="btn-primary">Access Dashboard</button>
         <p id="login-error" class="text-red-500 text-sm font-semibold mt-3 hidden">Incorrect PIN.</p>
     </div>
 
@@ -67,12 +61,12 @@
                 <!-- Rendered dynamically -->
             </div>
             <div class="flex flex-wrap gap-4">
-                <select id="statusFilter" onchange="renderTable()" class="border border-gray-300 rounded-xl pl-4 pr-8 py-2 font-medium text-sm outline-none focus:border-primary">
+                <select id="statusFilter" onchange="renderTable()" class="appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23131313%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:0.7rem_auto] bg-[position:right_0.75rem_center] bg-no-repeat bg-white border border-gray-300 rounded-xl pl-4 pr-8 py-2 font-medium text-sm outline-none focus:border-primary">
                     <option value="All">All Statuses</option>
                     <option value="Completed">Completed (9 visits)</option>
                     <option value="Uncompleted">Uncompleted</option>
                 </select>
-                <select id="dateFilter" onchange="toggleCustomDateRange()" class="border border-gray-300 rounded-xl pl-4 pr-8 py-2 font-medium text-sm outline-none focus:border-primary">
+                <select id="dateFilter" onchange="toggleCustomDateRange()" class="appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23131313%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:0.7rem_auto] bg-[position:right_0.75rem_center] bg-no-repeat bg-white border border-gray-300 rounded-xl pl-4 pr-8 py-2 font-medium text-sm outline-none focus:border-primary">
                     <option value="All">All Time (Last Visit)</option>
                     <option value="Today">Today</option>
                     <option value="ThisWeek">This Week</option>
@@ -90,27 +84,31 @@
         </div>
 
         <!-- STATS CARDS -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-4">
-                <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xl"><i class="fa-solid fa-users"></i></div>
-                <div><p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Customers</p><p id="stat-total" class="text-2xl font-black text-gray-800">0</p></div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 mb-8">
+            <div class="bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-gray-100 flex items-center gap-3 md:gap-4">
+                <div class="w-10 h-10 md:w-12 md:h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary text-lg md:text-xl"><i class="fa-solid fa-users"></i></div>
+                <div><p class="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider">Customers</p><p id="stat-total" class="text-lg md:text-2xl font-black text-gray-800">0</p></div>
             </div>
-            <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-4">
-                <div class="w-12 h-12 rounded-full bg-warning/20 flex items-center justify-center text-yellow-600 text-xl"><i class="fa-solid fa-stamp"></i></div>
-                <div><p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Stamps</p><p id="stat-stamps" class="text-2xl font-black text-gray-800">0</p></div>
+            <div class="bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-gray-100 flex items-center gap-3 md:gap-4">
+                <div class="w-10 h-10 md:w-12 md:h-12 rounded-full bg-warning/10 flex items-center justify-center text-warning text-lg md:text-xl"><i class="fa-solid fa-stamp"></i></div>
+                <div><p class="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider">Avg Visits</p><p id="stat-avg" class="text-lg md:text-2xl font-black text-gray-800">0</p></div>
             </div>
-            <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-4">
-                <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-xl"><i class="fa-solid fa-trophy"></i></div>
-                <div><p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Completed</p><p id="stat-completed" class="text-2xl font-black text-gray-800">0</p></div>
+            <div class="bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-gray-100 flex items-center gap-3 md:gap-4">
+                <div class="w-10 h-10 md:w-12 md:h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-500 text-lg md:text-xl"><i class="fa-solid fa-fire"></i></div>
+                <div><p class="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider">Active</p><p id="stat-active" class="text-lg md:text-2xl font-black text-gray-800">0</p></div>
+            </div>
+            <div class="bg-white rounded-2xl p-4 md:p-6 shadow-sm border border-gray-100 flex items-center gap-3 md:gap-4">
+                <div class="w-10 h-10 md:w-12 md:h-12 rounded-full bg-green-100 flex items-center justify-center text-green-500 text-lg md:text-xl"><i class="fa-solid fa-trophy"></i></div>
+                <div><p class="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wider">Redeemed</p><p id="stat-completed" class="text-lg md:text-2xl font-black text-gray-800">0</p></div>
             </div>
         </div>
 
         <!-- TABLE -->
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-gray-50 border-b border-gray-200 text-xs uppercase tracking-wider text-gray-500 font-bold">
+        <div class="bg-transparent sm:bg-white sm:rounded-2xl sm:shadow-sm sm:border sm:border-gray-100 sm:overflow-hidden">
+            <div class="">
+                <table class="w-full text-left sm:border-collapse block sm:table">
+                    <thead class="hidden sm:table-header-group">
+                        <tr class="bg-gray-50 border-b border-gray-200 text-xs uppercase tracking-wider text-gray-500 font-bold sm:table-row">
                             <th class="p-4">Card ID</th>
                             <th class="p-4">Customer Name</th>
                             <th class="p-4">Phone</th>
@@ -120,7 +118,7 @@
                             <th class="p-4"></th>
                         </tr>
                     </thead>
-                    <tbody id="tableBody" class="text-sm font-medium">
+                    <tbody id="tableBody" class="text-sm font-medium block sm:table-row-group">
                         <tr><td colspan="7" class="p-8 text-center text-gray-400"><i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Loading data...</td></tr>
                     </tbody>
                 </table>
@@ -128,266 +126,6 @@
         </div>
     </div>
 
-    <script>
-        const API_URL = "https://sheetdb.io/api/v1/im2qg2cit3cco";
-        let allData = [];
-        let expandedRows = new Set();
-        let selectedBranch = 'All';
-        let allBranches = new Set();
-
-        function login() {
-            const pin = document.getElementById('adminPin').value;
-            const name = document.getElementById('adminName').value.trim() || 'Admin';
-            if (pin === "2010") {
-                document.getElementById('welcome-msg').textContent = `Welcome, ${name}`;
-                document.getElementById('login-screen').classList.add('hidden');
-                document.getElementById('dashboard-screen').classList.remove('hidden');
-                fetchData();
-            } else {
-                document.getElementById('login-error').classList.remove('hidden');
-            }
-        }
-
-        document.getElementById('adminPin').addEventListener('keypress', function (e) { if (e.key === 'Enter') login(); });
-
-        async function fetchData() {
-            try {
-                const res = await fetch(API_URL);
-                const data = await res.json();
-                allData = data.filter(row => row.id && row.id.trim() !== "");
-                
-                // Extract all unique branches
-                allData.forEach(u => {
-                    if (u.history) {
-                        const logs = u.history.split('|').filter(Boolean);
-                        logs.forEach(log => {
-                            if (log.includes('@')) {
-                                allBranches.add(log.split('@')[1]);
-                            }
-                        });
-                    }
-                });
-                
-                renderBranchChips();
-                renderTable();
-            } catch (err) {
-                document.getElementById('tableBody').innerHTML = '<tr><td colspan="7" class="p-8 text-center text-red-500 font-bold">Failed to load data.</td></tr>';
-            }
-        }
-
-        function renderBranchChips() {
-            const container = document.getElementById('branch-chips');
-            container.innerHTML = '';
-            
-            const branches = ['All', ...Array.from(allBranches).sort()];
-            
-            branches.forEach(branch => {
-                const isSelected = branch === selectedBranch;
-                const btn = document.createElement('button');
-                btn.textContent = branch === 'All' ? 'All Branches' : branch;
-                btn.className = `px-4 py-1.5 rounded-full text-xs font-bold border transition-colors ${
-                    isSelected 
-                    ? 'border-primary bg-primary text-white' 
-                    : 'border-gray-300 bg-white text-gray-600 hover:border-primary'
-                }`;
-                btn.onclick = () => {
-                    selectedBranch = branch;
-                    renderBranchChips();
-                    renderTable();
-                };
-                container.appendChild(btn);
-            });
-        }
-
-        function extractHistoryDetails(historyStr) {
-            if (!historyStr) return [];
-            const logs = historyStr.split('|').filter(Boolean);
-            return logs.map((log, index) => {
-                let date = log;
-                let branch = 'Unknown';
-                if (log.includes('@')) {
-                    [date, branch] = log.split('@');
-                }
-                return { date: new Date(date), branch, visitNumber: index + 1 };
-            }).reverse(); // newest first
-        }
-
-        function toggleCustomDateRange() {
-            const dateFilter = document.getElementById('dateFilter').value;
-            const customDateRange = document.getElementById('customDateRange');
-            if (dateFilter === 'Custom') {
-                customDateRange.classList.remove('hidden');
-                customDateRange.classList.add('flex');
-            } else {
-                customDateRange.classList.remove('flex');
-                customDateRange.classList.add('hidden');
-            }
-            renderTable();
-        }
-
-        function toggleRow(id) {
-            if (expandedRows.has(id)) expandedRows.delete(id);
-            else expandedRows.add(id);
-            renderTable();
-        }
-
-        function renderTable() {
-            const tbody = document.getElementById('tableBody');
-            tbody.innerHTML = '';
-
-            const search = document.getElementById('searchInput').value.toLowerCase();
-            const statusFilter = document.getElementById('statusFilter').value;
-            const dateFilter = document.getElementById('dateFilter').value;
-
-            let filtered = allData.filter(u => u.name && u.name.trim() !== "");
-
-            // Apply Text Search
-            if (search) {
-                filtered = filtered.filter(u => 
-                    (u.name && u.name.toLowerCase().includes(search)) ||
-                    (u.phone && u.phone.includes(search)) ||
-                    (u.id && u.id.toLowerCase().includes(search))
-                );
-            }
-
-            // Apply Status Filter
-            if (statusFilter === 'Completed') {
-                filtered = filtered.filter(u => parseInt(u.visits) >= 9);
-            } else if (statusFilter === 'Uncompleted') {
-                filtered = filtered.filter(u => parseInt(u.visits) < 9);
-            }
-
-            // Apply Date & Branch Filter
-            const now = new Date();
-            let totalMatchingStamps = 0;
-            
-            let customStart = null;
-            let customEnd = null;
-            if (dateFilter === 'Custom') {
-                const s = document.getElementById('startDate').value;
-                const e = document.getElementById('endDate').value;
-                if (s) customStart = new Date(s);
-                if (e) customEnd = new Date(e);
-                if (customEnd) customEnd.setHours(23, 59, 59, 999);
-            }
-
-            filtered = filtered.filter(u => {
-                const history = extractHistoryDetails(u.history);
-                let matchingVisits = history;
-
-                if (selectedBranch !== 'All') {
-                    matchingVisits = matchingVisits.filter(v => v.branch === selectedBranch);
-                }
-
-                if (dateFilter !== 'All') {
-                    matchingVisits = matchingVisits.filter(v => {
-                        if (!v.date || isNaN(v.date)) return false;
-                        if (dateFilter === 'Custom') {
-                            if (customStart && v.date < customStart) return false;
-                            if (customEnd && v.date > customEnd) return false;
-                            return true;
-                        }
-                        const diffDays = (now - v.date) / (1000 * 60 * 60 * 24);
-                        if (dateFilter === 'Today' && diffDays > 1) return false;
-                        if ((dateFilter === 'ThisWeek' || dateFilter === 'Last7Days') && diffDays > 7) return false;
-                        if ((dateFilter === 'ThisMonth' || dateFilter === 'Last30Days') && diffDays > 30) return false;
-                        if (dateFilter === 'ThisYear' && diffDays > 365) return false;
-                        return true;
-                    });
-                }
-
-                if (matchingVisits.length > 0 || (dateFilter === 'All' && selectedBranch === 'All')) {
-                    if (dateFilter !== 'All' || selectedBranch !== 'All') {
-                        totalMatchingStamps += matchingVisits.length;
-                    } else {
-                        totalMatchingStamps += parseInt(u.visits) || 0;
-                    }
-                    return true;
-                }
-                return false;
-            });
-
-            // Sort by latest visit
-            filtered.sort((a, b) => {
-                const ha = extractHistoryDetails(a.history);
-                const hb = extractHistoryDetails(b.history);
-                const da = ha.length ? ha[0].date : 0;
-                const db = hb.length ? hb[0].date : 0;
-                return db - da;
-            });
-
-            // Update Stats for filtered
-            const totalCustomers = filtered.length;
-            const totalStamps = totalMatchingStamps;
-            const completedCards = filtered.filter(u => parseInt(u.visits) >= 9).length;
-            document.getElementById('stat-total').textContent = totalCustomers;
-            document.getElementById('stat-stamps').textContent = totalStamps;
-            document.getElementById('stat-completed').textContent = completedCards;
-
-            if (filtered.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-gray-400">No matching records found.</td></tr>';
-                return;
-            }
-
-            filtered.forEach(user => {
-                const visits = parseInt(user.visits) || 0;
-                const history = extractHistoryDetails(user.history);
-                const lastBranch = history.length ? history[0].branch : '—';
-                const badgeClass = visits >= 9 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700';
-                const isExpanded = expandedRows.has(user.id);
-
-                const tr = document.createElement('tr');
-                tr.className = 'border-b border-gray-100 transition-colors main-row';
-                tr.onclick = () => toggleRow(user.id);
-                tr.innerHTML = `
-                    <td class="p-4 text-gray-500 font-semibold">#${user.id}</td>
-                    <td class="p-4 font-bold text-gray-800">${user.name || '—'}</td>
-                    <td class="p-4 text-gray-600">${user.phone || '—'}</td>
-                    <td class="p-4 text-center">
-                        <span class="${badgeClass} px-2.5 py-1 rounded-md text-xs font-black tracking-widest">${visits}/9</span>
-                    </td>
-                    <td class="p-4 text-gray-600">${lastBranch}</td>
-                    <td class="p-4 text-gray-600">${user.last_visit || '—'}</td>
-                    <td class="p-4 text-gray-400 text-right">
-                        <i class="fa-solid fa-chevron-${isExpanded ? 'up' : 'down'}"></i>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-
-                if (isExpanded) {
-                    const histTr = document.createElement('tr');
-                    histTr.className = 'history-row border-b border-gray-200';
-                    
-                    let histHTML = '<td colspan="7" class="p-6">';
-                    histHTML += '<p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Visit History</p>';
-                    histHTML += '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">';
-                    
-                    if (history.length === 0) {
-                        histHTML += '<p class="text-sm text-gray-500">No visits recorded.</p>';
-                    } else {
-                        history.forEach(item => {
-                            const d = item.date;
-                            const dateStr = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-                            const timeStr = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-                            histHTML += `
-                                <div class="bg-white border border-gray-200 p-3 rounded-xl flex justify-between items-center">
-                                    <div>
-                                        <p class="text-xs font-bold text-gray-500 uppercase">Visit #${item.visitNumber}</p>
-                                        <p class="font-bold text-gray-800">${dateStr}</p>
-                                        <p class="text-[10px] font-semibold text-gray-500 mt-1"><i class="fa-solid fa-location-dot mr-1"></i>${item.branch}</p>
-                                    </div>
-                                    <p class="text-xs font-semibold text-gray-400">${timeStr}</p>
-                                </div>
-                            `;
-                        });
-                    }
-                    
-                    histHTML += '</div></td>';
-                    histTr.innerHTML = histHTML;
-                    tbody.appendChild(histTr);
-                }
-            });
-        }
-    </script>
+    <script src="js/admin.js"></script>
 </body>
 </html>
