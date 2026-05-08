@@ -67,6 +67,46 @@ function validatePhone(isd, raw) {
     return { ok: true, digits };
 }
 
+function findPhoneCodeFromDigits(digits) {
+    return Object.keys(PHONE_RULES)
+        .sort((a, b) => b.length - a.length)
+        .find(code => digits.startsWith(code.replace(/\D/g, ''))) || '';
+}
+
+function canonicalPhoneFromParts(isd, digits) {
+    const code = String(isd || '').trim();
+    const cleanDigits = String(digits || '').replace(/\D/g, '');
+    return code && cleanDigits ? code + cleanDigits : '';
+}
+
+function canonicalPhoneFromStored(stored) {
+    const digits = String(stored || '').replace(/\D/g, '');
+    if (!digits) return '';
+
+    const code = findPhoneCodeFromDigits(digits);
+    if (!code) return '';
+
+    const codeDigits = code.replace(/\D/g, '');
+    const nationalDigits = digits.slice(codeDigits.length);
+    return canonicalPhoneFromParts(code, nationalDigits);
+}
+
+function hasRegisteredPhone(row) {
+    return Boolean(
+        row &&
+        String(row.phone || '').trim() &&
+        String(row.name || '').trim()
+    );
+}
+
+function phoneAlreadyRegistered(rows, canonicalPhone, currentCardId) {
+    return (Array.isArray(rows) ? rows : []).some(row =>
+        hasRegisteredPhone(row) &&
+        String(row.id || '').trim() !== String(currentCardId || '').trim() &&
+        canonicalPhoneFromStored(row.phone) === canonicalPhone
+    );
+}
+
 function splitPhone(stored) {
     const s = String(stored || '').trim();
     // With a leading + — match longest known ISD prefix.
@@ -648,16 +688,16 @@ async function handleRegistration() {
     const phoneCheck = validatePhone(isd, rawPhone);
     if (!phoneCheck.ok) return showDialog("Invalid Phone", phoneCheck.reason);
 
-    const fullPhone = isd + phoneCheck.digits;
+    const fullPhone = canonicalPhoneFromParts(isd, phoneCheck.digits);
 
     registering = true;
     if (btn) { btn.disabled = true; btn.innerHTML = "Verifying..."; }
 
     try {
-        const res = await fetch(`${API_URL}/search?phone=${encodeURIComponent(fullPhone)}`);
+        const res = await fetch(API_URL);
         const globalUsers = await res.json();
         
-        if (globalUsers.length > 0) {
+        if (phoneAlreadyRegistered(globalUsers, fullPhone, cardId)) {
             registering = false;
             if (btn) { btn.disabled = false; btn.innerHTML = "Complete Activation"; }
             return showDialog("Phone Exists", "Phone number already registered. Please try a different number.");
