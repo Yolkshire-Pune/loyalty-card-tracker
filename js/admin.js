@@ -19,6 +19,53 @@ function login() {
 
 document.getElementById('adminPin').addEventListener('keypress', function (e) { if (e.key === 'Enter') login(); });
 
+function extractHistoryDate(entry) {
+    return String(entry || '').split('@')[0];
+}
+
+function parseStoredDate(value) {
+    const raw = extractHistoryDate(value).trim();
+    if (!raw) return null;
+
+    const match = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:,\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?)?$/i);
+    if (!match) {
+        const direct = new Date(raw);
+        return isNaN(direct) ? null : direct;
+    }
+
+    const [, day, month, year, hour = '0', minute = '0', second = '0', meridiem] = match;
+    let h = parseInt(hour, 10);
+    if (meridiem) {
+        const m = meridiem.toLowerCase();
+        if (m === 'pm' && h < 12) h += 12;
+        if (m === 'am' && h === 12) h = 0;
+    }
+
+    const parsed = new Date(
+        parseInt(year, 10),
+        parseInt(month, 10) - 1,
+        parseInt(day, 10),
+        h,
+        parseInt(minute, 10),
+        parseInt(second, 10)
+    );
+    return isNaN(parsed) ? null : parsed;
+}
+
+function formatDateTime(value) {
+    const d = parseStoredDate(value);
+    if (!d) return value || '—';
+    return d.toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    }).replace(/\b(am|pm)\b/i, m => m.toLowerCase());
+}
+
 async function fetchData() {
     try {
         const res = await fetch(API_URL);
@@ -72,12 +119,12 @@ function extractHistoryDetails(historyStr) {
     if (!historyStr) return [];
     const logs = historyStr.split('|').filter(Boolean);
     return logs.map((log, index) => {
-        let date = log;
+        let date = extractHistoryDate(log);
         let branch = 'Unknown';
         if (log.includes('@')) {
-            [date, branch] = log.split('@');
+            branch = log.split('@')[1];
         }
-        return { date: new Date(date), branch, visitNumber: index + 1 };
+        return { date: parseStoredDate(date), branch, visitNumber: index + 1 };
     }).reverse(); // newest first
 }
 
@@ -269,7 +316,7 @@ function renderTable() {
                 <span class="${badgeClass} px-2.5 py-1 rounded-md text-xs font-black tracking-widest">${displayVisits}/9</span>
             </td>
             <td class="p-4 sm:p-4 text-gray-600 block sm:table-cell flex justify-between items-center border-t border-gray-50 sm:border-none"><span class="sm:hidden text-[10px] font-bold text-gray-400 uppercase">Last Branch</span>${lastBranch}</td>
-            <td class="p-4 sm:p-4 text-gray-600 block sm:table-cell flex justify-between items-center border-t border-gray-50 sm:border-none"><span class="sm:hidden text-[10px] font-bold text-gray-400 uppercase">Last Visit</span>${user.last_visit || '—'}</td>
+            <td class="p-4 sm:p-4 text-gray-600 block sm:table-cell flex justify-between items-center border-t border-gray-50 sm:border-none"><span class="sm:hidden text-[10px] font-bold text-gray-400 uppercase">Last Visit</span>${formatDateTime(user.last_visit)}</td>
             <td class="p-4 sm:p-4 text-gray-400 sm:text-right block sm:table-cell flex justify-center border-t border-gray-50 sm:border-none cursor-pointer hover:bg-gray-50 rounded-b-2xl sm:rounded-none">
                 <span class="sm:hidden text-xs font-bold mr-2">History</span> <i class="fa-solid fa-chevron-${isExpanded ? 'up' : 'down'}"></i>
             </td>
