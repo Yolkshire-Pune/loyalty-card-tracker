@@ -39,8 +39,8 @@ const PHONE_RULES = {
     '+94':  [9, 9],    // Sri Lanka
     '+977': [10, 10],  // Nepal
 };
-// ⚠️ [TEST FLAG] Set to true for production logic
-const ENABLE_DAILY_LIMIT_CHECK = false;
+// Production guard: one stamp per card per Asia/Kolkata calendar day.
+const ENABLE_DAILY_LIMIT_CHECK = true;
 
 // --- STATE ---
 const urlParams = new URLSearchParams(window.location.search);
