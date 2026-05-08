@@ -139,6 +139,90 @@ function formatPhone(stored) {
 }
 
 // --- DATE / GREETING HELPERS ---
+function extractHistoryDate(entry) {
+    return String(entry || '').split('@')[0];
+}
+
+function parseStoredDate(value) {
+    const raw = extractHistoryDate(value).trim();
+    if (!raw) return null;
+
+    const match = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:,\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?)?$/i);
+    if (!match) {
+        const direct = new Date(raw);
+        return isNaN(direct) ? null : direct;
+    }
+
+    const [, day, month, year, hour = '0', minute = '0', second = '0', meridiem] = match;
+    let h = parseInt(hour, 10);
+    if (meridiem) {
+        const m = meridiem.toLowerCase();
+        if (m === 'pm' && h < 12) h += 12;
+        if (m === 'am' && h === 12) h = 0;
+    }
+
+    const parsed = new Date(
+        parseInt(year, 10),
+        parseInt(month, 10) - 1,
+        parseInt(day, 10),
+        h,
+        parseInt(minute, 10),
+        parseInt(second, 10)
+    );
+    return isNaN(parsed) ? null : parsed;
+}
+
+function formatDateTime(value) {
+    const d = parseStoredDate(value);
+    if (!d) return value || 'N/A';
+    return d.toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    }).replace(/\b(am|pm)\b/i, m => m.toLowerCase());
+}
+
+function getKolkataDateKey(value) {
+    const d = value instanceof Date ? value : parseStoredDate(value);
+    if (!d) return '';
+    return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).format(d);
+}
+
+function getLatestStampDate(user) {
+    const visits = parseInt(user?.visits) || 0;
+    if (visits <= 0) return null;
+
+    const logs = user?.history ? user.history.split('|').filter(Boolean) : [];
+    const stampLogs = logs.slice(1);
+    for (let i = stampLogs.length - 1; i >= 0; i--) {
+        const d = parseStoredDate(stampLogs[i]);
+        if (d) return d;
+    }
+
+    return parseStoredDate(user?.last_visit);
+}
+
+function hasStampedToday(user) {
+    const latestStampDate = getLatestStampDate(user);
+    return Boolean(
+        latestStampDate &&
+        getKolkataDateKey(latestStampDate) === getKolkataDateKey(new Date())
+    );
+}
+
+function getLastVisitLabel(user) {
+    return getLatestStampDate(user) ? formatDateTime(getLatestStampDate(user)) : 'N/A';
+}
+
 function getGreeting(firstName) {
     const hr = parseInt(new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', hour12: false }).format(new Date()));
     if (hr >= 5  && hr < 11) return { headline: `Good morning, ${firstName}!`,                    tagline: 'Ready for your morning protein fix?' };
@@ -150,8 +234,7 @@ function getJoinDate(user) {
     if (!user.history) return '—';
     try {
         let first = user.history.split('|').filter(Boolean)[0];
-        if (first && first.includes('@')) first = first.split('@')[0];
-        const d = new Date(first);
+        const d = parseStoredDate(first);
         if (isNaN(d)) return '—';
         return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
     } catch { return '—'; }
@@ -159,13 +242,13 @@ function getJoinDate(user) {
 function groupLogsByMonth(logs) {
     const parsed = [];
     logs.forEach((entry, i) => {
-        let iso = entry;
+        let iso = extractHistoryDate(entry);
         let branch = '';
         if (entry && entry.includes('@')) {
-            [iso, branch] = entry.split('@');
+            branch = entry.split('@')[1];
         }
         try {
-            const d = new Date(iso);
+            const d = parseStoredDate(iso);
             if (isNaN(d)) return;
             parsed.push({ d, branch, visitIndex: i });
         } catch {}
@@ -556,7 +639,7 @@ function render(view = 'default') {
                     ${ProfileStat("Card ID", escapeHTML(currentUser.id))}
                     ${ProfileStat("Join Date", getJoinDate(currentUser))}
                     ${ProfileStat("Phone", escapeHTML(formatPhone(currentUser.phone)))}
-                    ${ProfileStat(isCardComplete ? "Completed Date" : "Last Visit", escapeHTML(currentUser.last_visit || "N/A"))}
+                    ${ProfileStat(isCardComplete ? "Completed Date" : "Last Visit", escapeHTML(getLastVisitLabel(currentUser)))}
                 </div>
             </div>
         `;
@@ -749,8 +832,7 @@ async function handleVisit(currentVisits) {
     }
 
     if (ENABLE_DAILY_LIMIT_CHECK) {
-        const todayStr = new Date().toLocaleDateString('en-IN');
-        if (currentUser.last_visit === todayStr) {
+        if (hasStampedToday(currentUser)) {
             reenable();
             return showDialog("Daily Limit", "Oops! Guest is allowed only one visit per day to collect a stamp.");
         }
@@ -785,7 +867,7 @@ async function proceedStamp(newVisitCount, rewardIdx, branchName) {
     if (btn) btn.innerHTML = "Stamping...";
 
     const now = new Date();
-    const todayStr = now.toLocaleDateString('en-IN');
+    const nowIso = now.toISOString();
     const logEntry = branchName ? now.toISOString() + "@" + branchName : now.toISOString();
     const updatedHistory = currentUser.history ? currentUser.history + "|" + logEntry : logEntry;
 
@@ -795,7 +877,7 @@ async function proceedStamp(newVisitCount, rewardIdx, branchName) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 visits: newVisitCount,
-                last_visit: todayStr,
+                last_visit: nowIso,
                 history: updatedHistory
             })
         });
