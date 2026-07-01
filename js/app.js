@@ -296,7 +296,16 @@ function getGreeting(firstName) {
     return { headline: `Late-night cravings, ${firstName}?`, tagline: "Yolkshire's got your back." };
 }
 function getJoinDate(user) {
-    if (!user.history) return '—';
+    const visits = parseInt(user?.visits) || 0;
+    if (visits === 0 && user?.last_visit) {
+        try {
+            const d = parseStoredDate(user.last_visit);
+            if (d && !isNaN(d)) {
+                return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+            }
+        } catch {}
+    }
+    if (!user?.history) return '—';
     try {
         let first = user.history.split('|').filter(Boolean)[0];
         const d = parseStoredDate(first);
@@ -515,10 +524,9 @@ function normalizeUserRecord(user) {
     if (!user) return;
     let visits = parseInt(user.visits) || 0;
     const logs = user.history ? user.history.split('|').filter(Boolean) : [];
-    if (logs.length > 0 && visits < logs.length) {
-        // Self-healing migration for backward compatibility
-        visits = logs.length;
-        user.visits = visits;
+    if (logs.length > 0 && logs.length === visits + 1) {
+        // Self-healing migration: remove old-schema activation log from history log
+        user.history = logs.slice(1).join('|');
     }
 }
 
@@ -1039,8 +1047,7 @@ async function handleRegistration() {
         }
 
         const todayStr = new Date().toISOString();
-        const historyLog = `${todayStr}@${branchName}`;
-        const payload = { name, phone: fullPhone, visits: 1, last_visit: todayStr, history: historyLog };
+        const payload = { name, phone: fullPhone, visits: 0, last_visit: todayStr, history: "" };
         if (activeCampaign.requiresMemberId) payload.member_id = memberId;
 
         await fetch(`${API_URL}/id/${encodeURIComponent(cardId)}`, {

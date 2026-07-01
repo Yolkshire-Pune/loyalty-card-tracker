@@ -180,9 +180,9 @@ async function fetchData() {
         allData.forEach(u => {
             let visits = parseInt(u.visits) || 0;
             const logs = u.history ? u.history.split('|').filter(Boolean) : [];
-            if (logs.length > 0 && visits < logs.length) {
-                visits = logs.length;
-                u.visits = visits;
+            if (logs.length > 0 && logs.length === visits + 1) {
+                // Remove old-schema activation log from history log
+                u.history = logs.slice(1).join('|');
             }
         });
 
