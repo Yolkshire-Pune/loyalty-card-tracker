@@ -18,7 +18,7 @@ const CAMPAIGNS = {
     pyc: {
         key: 'pyc',
         apiUrl: PYC_API_URL,
-        title: 'PYC Member Loyalty Records',
+        title: 'YolKlub Loyalty Records',
         totalVisits: 10,
         rewards: {
             5: 'Free Drink/Dessert',
@@ -175,6 +175,17 @@ async function fetchData() {
         const res = await fetch(API_URL);
         const data = await res.json();
         allData = data.filter(row => row.id && row.id.trim() !== "");
+        
+        // Self-healing migration for backward compatibility: normalize old records in-memory
+        allData.forEach(u => {
+            let visits = parseInt(u.visits) || 0;
+            const logs = u.history ? u.history.split('|').filter(Boolean) : [];
+            if (logs.length > 0 && visits < logs.length) {
+                visits = logs.length;
+                u.visits = visits;
+            }
+        });
+
         allBranches = new Set();
 
         allData.forEach(u => {
@@ -234,7 +245,7 @@ function extractHistoryDetails(historyStr) {
         if (log.includes('@')) {
             branch = log.split('@')[1];
         }
-        return { date: parseStoredDate(date), branch, visitNumber: index };
+        return { date: parseStoredDate(date), branch, visitNumber: index + 1 };
     }).reverse(); // newest first
 }
 
@@ -446,11 +457,11 @@ function renderTable() {
                     const dateStr = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
                     const timeStr = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 
-                    const isActivation = item.visitNumber === 0;
-                    const isMilestone = item.visitNumber > 0 && isRewardVisit(item.visitNumber);
-                    const title = isActivation ? "Card Collection" : `Visit #${item.visitNumber}`;
+                    const isActivation = item.visitNumber === 1;
+                    const isMilestone = isRewardVisit(item.visitNumber);
+                    const title = isActivation ? "Visit #1 (Card Collection)" : `Visit #${item.visitNumber}`;
                     const bgClass = (isMilestone || isActivation) ? 'bg-warning/10 border-warning/30' : 'bg-white border-gray-200';
-                    const icon = (isMilestone || isActivation) ? `<i class="fa-solid fa-${isActivation ? 'id-card' : 'gift'} text-warning mr-1.5"></i>` : '';
+                    const icon = isMilestone ? `<i class="fa-solid fa-gift text-warning mr-1.5"></i>` : (isActivation ? `<i class="fa-solid fa-id-card text-warning mr-1.5"></i>` : '');
                     const rewardChip = isMilestone ? `<span class="ml-1.5 text-warning">${escapeHTML(getRewardName(item.visitNumber))}</span>` : '';
 
                     histHTML += `

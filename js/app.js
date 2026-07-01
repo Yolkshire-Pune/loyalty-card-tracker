@@ -28,7 +28,7 @@ const CAMPAIGNS = {
         },
         fixedBranch: 'PYC',
         requiresMemberId: true,
-        title: "Yolkshire's PYC Member Loyalty Program"
+        title: "YolKlub Loyalty Program"
     }
 };
 // [min, max] digit length (mobile) per ISD code
@@ -68,7 +68,7 @@ const PHONE_RULES = {
     '+977': [10, 10],  // Nepal
 };
 // Production guard: one stamp per card per Asia/Kolkata calendar day.
-const ENABLE_DAILY_LIMIT_CHECK = true;
+const ENABLE_DAILY_LIMIT_CHECK = false; // Set to false for testing as requested by the user.
 
 // --- STATE ---
 const urlParams = new URLSearchParams(window.location.search);
@@ -79,6 +79,29 @@ const API_URL = activeCampaign.apiUrl;
 let currentUser = null;
 let registering = false;
 let _dialogOnCancel = null;
+
+// --- FIREBASE CONFIGURATION (FOR PHONE NUMBER VERIFICATION) ---
+// Set your Firebase Web App configuration credentials below to enable automated SMS OTP verification.
+// Leave the fields empty to run without phone number verification.
+const FIREBASE_CONFIG = {
+    apiKey: "",
+    authDomain: "",
+    projectId: "",
+    storageBucket: "",
+    messagingSenderId: "",
+    appId: ""
+};
+
+const ENABLE_PHONE_VERIFICATION = Boolean(FIREBASE_CONFIG.apiKey);
+let confirmationResultObj = null;
+
+if (ENABLE_PHONE_VERIFICATION) {
+    try {
+        firebase.initializeApp(FIREBASE_CONFIG);
+    } catch (e) {
+        console.error("Firebase initialization failed:", e);
+    }
+}
 
 // --- SANITIZATION HELPERS ---
 function escapeHTML(s) {
@@ -245,9 +268,8 @@ function getLatestStampDate(user) {
     if (visits <= 0) return null;
 
     const logs = user?.history ? user.history.split('|').filter(Boolean) : [];
-    const stampLogs = logs.slice(1);
-    for (let i = stampLogs.length - 1; i >= 0; i--) {
-        const d = parseStoredDate(stampLogs[i]);
+    for (let i = logs.length - 1; i >= 0; i--) {
+        const d = parseStoredDate(logs[i]);
         if (d) return d;
     }
 
@@ -293,7 +315,7 @@ function groupLogsByMonth(logs) {
         try {
             const d = parseStoredDate(iso);
             if (isNaN(d)) return;
-            parsed.push({ d, branch, visitIndex: i });
+            parsed.push({ d, branch, visitIndex: i + 1 });
         } catch {}
     });
     parsed.reverse(); // newest first
@@ -352,13 +374,13 @@ const ProfileStat = (label, value) => `
     </div>`;
 
 const HistoryItem = (d, visitIndex, branch) => {
-    const isMilestone = visitIndex > 0 && isRewardVisit(visitIndex);
-    const isActivation = visitIndex === 0;
-    const titleText = isActivation ? "Card Collection Date" : `Visit #${visitIndex}`;
+    const isMilestone = isRewardVisit(visitIndex);
+    const isActivation = visitIndex === 1;
+    const titleText = isActivation ? "Visit #1 (Card Collection)" : `Visit #${visitIndex}`;
     const baseClasses = (isMilestone || isActivation)
         ? 'bg-warning/15 border border-warning/40'
         : 'bg-surfaceVariant border border-gray-100';
-    const icon = (isMilestone || isActivation) ? `<i class="fa-solid fa-${isActivation ? 'id-card' : 'gift'} text-warning text-sm mr-1.5"></i>` : '';
+    const icon = isMilestone ? `<i class="fa-solid fa-gift text-warning text-sm mr-1.5"></i>` : (isActivation ? `<i class="fa-solid fa-id-card text-warning text-sm mr-1.5"></i>` : '');
     const chip = isMilestone
         ? `<span class="ml-2 text-[9px] font-black text-warning uppercase tracking-widest bg-warning/10 px-1.5 py-0.5 rounded-md border border-warning/30">${getRewardName(visitIndex)}</span>`
         : '';
@@ -489,6 +511,37 @@ function handleManualId() {
     }
 }
 
+function normalizeUserRecord(user) {
+    if (!user) return;
+    let visits = parseInt(user.visits) || 0;
+    const logs = user.history ? user.history.split('|').filter(Boolean) : [];
+    if (logs.length > 0 && visits < logs.length) {
+        // Self-healing migration for backward compatibility
+        visits = logs.length;
+        user.visits = visits;
+    }
+}
+
+function getVisitSuffix(n) {
+    if (n === 11 || n === 12 || n === 13) return 'th';
+    const last = n % 10;
+    if (last === 1) return 'st';
+    if (last === 2) return 'nd';
+    if (last === 3) return 'rd';
+    return 'th';
+}
+
+function getVisitSuccessMessage(visits) {
+    const suffix = getVisitSuffix(visits);
+    if (visits >= activeCampaign.totalVisits) {
+        return `${visits}${suffix} Visit Completed. You have completed your card! See you soon.`;
+    }
+    const milestones = Object.keys(activeCampaign.rewards).map(Number).sort((a,b) => a-b);
+    const nextMilestone = milestones.find(m => m > visits) || activeCampaign.totalVisits;
+    const remaining = nextMilestone - visits;
+    return `${visits}${suffix} Visit Completed. ${remaining} more visit${remaining > 1 ? 's' : ''} before your free reward. See you soon.`;
+}
+
 async function init() {
     if (!cardId) return render('home');
     if (!API_URL) return showError("PYC SheetDB API URL is not configured yet.");
@@ -497,7 +550,21 @@ async function init() {
         const data = await res.json();
         if (data.length === 0) return showError("Card ID not found in database.");
         currentUser = data[0];
+        
+        // Self-healing: normalize old records in-memory
+        normalizeUserRecord(currentUser);
+        
         render();
+
+        // Check for pending success message from stamping or registration
+        const successMsg = localStorage.getItem('stamp_success_message');
+        if (successMsg) {
+            localStorage.removeItem('stamp_success_message');
+            // Slight delay so the UI fully loads in the background first
+            setTimeout(() => {
+                showDialog("Stamp Success", successMsg);
+            }, 300);
+        }
     } catch (err) { showError("Database connection failed. Check your SheetDB setup."); }
 }
 
@@ -662,6 +729,7 @@ function render(view = 'default') {
                     <i class="fa-solid fa-chevron-down absolute right-4 top-4 text-gray-400 pointer-events-none"></i>
                 </div>
             </div>`;
+        const buttonLabel = ENABLE_PHONE_VERIFICATION ? "Verify Phone & Activate" : "Complete Activation";
         container.innerHTML = `
             <h2 class="text-xl font-semibold text-primary mb-2">Join Yolkshire's</h2>
             <p class="text-primary font-semibold mb-6">${escapeHTML(activeCampaign.title.replace("Yolkshire's ", ""))}</p>
@@ -669,7 +737,12 @@ function render(view = 'default') {
             ${OutlinedTextField("regPhone", "Phone Number", "9876543210", "tel", isdHTML)}
             ${memberIdHTML}
             ${branchHTML}
-            <div class="mt-8">${PrimaryButton("Complete Activation", "handleRegistration()")}</div>
+            <div id="otp-area" class="hidden mt-4 text-left">
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">SMS OTP Verification Code</label>
+                <input type="tel" id="otpCode" placeholder="Enter 6-digit OTP" class="w-full border border-outline rounded-xl px-4 py-3.5 font-bold text-sm text-gray-800 outline-none focus:border-primary focus:ring-1 focus:ring-primary appearance-none bg-white transition-all">
+            </div>
+            <div id="recaptcha-container" class="mt-4 flex justify-center"></div>
+            <div class="mt-8">${PrimaryButton(buttonLabel, "handleRegistration()")}</div>
         `;
     }
     // --- VIEW: SUCCESS ---
@@ -872,8 +945,79 @@ async function handleRegistration() {
 
     const fullPhone = canonicalPhoneFromParts(isd, phoneCheck.digits);
 
+    // If Firebase verification is enabled and OTP hasn't been sent yet:
+    if (ENABLE_PHONE_VERIFICATION && !confirmationResultObj) {
+        registering = true;
+        if (btn) { btn.disabled = true; btn.innerHTML = "Sending OTP..."; }
+        try {
+            // First check if phone number already exists to avoid sending unnecessary SMS
+            const res = await fetch(API_URL);
+            const globalUsers = await res.json();
+            
+            if (phoneAlreadyRegistered(globalUsers, fullPhone, cardId)) {
+                resetButton();
+                return showDialog("Phone Exists", "Phone number already registered. Please try a different number.");
+            }
+
+            if (activeCampaign.requiresMemberId && memberIdAlreadyRegistered(globalUsers, memberId, cardId)) {
+                resetButton();
+                return showDialog("Member ID Exists", "This PYC member ID is already registered. Please check the ID and try again.");
+            }
+
+            // Setup invisible recaptcha
+            if (!window.recaptchaVerifier) {
+                window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+                    'size': 'invisible'
+                });
+            }
+
+            const confirmationResult = await firebase.auth().signInWithPhoneNumber(fullPhone, window.recaptchaVerifier);
+            confirmationResultObj = confirmationResult;
+            
+            // Show OTP input and change button
+            document.getElementById('otp-area').classList.remove('hidden');
+            // Disable other fields to prevent modification after OTP is sent
+            document.getElementById('regName').disabled = true;
+            document.getElementById('isd').disabled = true;
+            document.getElementById('regPhone').disabled = true;
+            if (document.getElementById('regMemberId')) document.getElementById('regMemberId').disabled = true;
+            if (document.getElementById('regBranch')) document.getElementById('regBranch').disabled = true;
+
+            registering = false;
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = "Verify OTP & Complete";
+            }
+            showDialog("OTP Sent", "A 6-digit verification code has been sent to " + formatPhone(fullPhone));
+        } catch (err) {
+            resetButton();
+            console.error("SMS OTP Send Failed:", err);
+            showDialog("OTP Failed", "Failed to send verification SMS. Please check the number and try again.");
+        }
+        return;
+    }
+
+    // If OTP was sent and needs verification:
+    if (ENABLE_PHONE_VERIFICATION && confirmationResultObj) {
+        const otpCode = document.getElementById('otpCode').value.trim();
+        if (!otpCode || otpCode.length !== 6) {
+            return showDialog("Invalid OTP", "Please enter the 6-digit verification code sent to your phone.");
+        }
+        registering = true;
+        if (btn) { btn.disabled = true; btn.innerHTML = "Verifying OTP..."; }
+        try {
+            await confirmationResultObj.confirm(otpCode);
+        } catch (err) {
+            registering = false;
+            if (btn) { btn.disabled = false; btn.innerHTML = "Verify OTP & Complete"; }
+            console.error("OTP Verification Failed:", err);
+            return showDialog("Verification Failed", "The verification code entered is incorrect or expired.");
+        }
+    }
+
+    // Direct registration (either phone verification is disabled, or OTP was verified successfully):
     registering = true;
-    if (btn) { btn.disabled = true; btn.innerHTML = "Verifying..."; }
+    if (btn) { btn.disabled = true; btn.innerHTML = "Activating..."; }
 
     try {
         const res = await fetch(API_URL);
@@ -891,7 +1035,7 @@ async function handleRegistration() {
 
         const todayStr = new Date().toISOString();
         const historyLog = `${todayStr}@${branchName}`;
-        const payload = { name, phone: fullPhone, visits: 0, last_visit: todayStr, history: historyLog };
+        const payload = { name, phone: fullPhone, visits: 1, last_visit: todayStr, history: historyLog };
         if (activeCampaign.requiresMemberId) payload.member_id = memberId;
 
         await fetch(`${API_URL}/id/${encodeURIComponent(cardId)}`, {
@@ -899,6 +1043,11 @@ async function handleRegistration() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
+
+        // Set success message for display on reload
+        const msg = getVisitSuccessMessage(1);
+        localStorage.setItem('stamp_success_message', msg);
+
         render('success');
     } catch (err) {
         resetButton();
@@ -987,6 +1136,10 @@ async function proceedStamp(newVisitCount, rewardIdx, branchName, rewardVisit) {
                 history: updatedHistory
             })
         });
+
+        // Set success message for display on reload
+        const msg = getVisitSuccessMessage(newVisitCount);
+        localStorage.setItem('stamp_success_message', msg);
 
         if (rewardIdx != null && rewardVisit != null) {
             await celebrateMilestone(rewardIdx, getRewardName(rewardVisit));
