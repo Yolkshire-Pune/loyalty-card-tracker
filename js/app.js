@@ -782,9 +782,14 @@ function render(view = 'default') {
             </div>
 
             <div class="flex justify-between items-center mb-8 px-2 border-b border-gray-100 pb-8 gap-4">
-                <div class="text-left leading-none flex items-baseline">
-                    <span class="text-6xl font-black text-primary">${displayVisits}</span>
-                    <span class="text-xl text-onSurfaceVariant font-bold">/ ${activeCampaign.totalVisits}</span>
+                <div class="text-left leading-none flex flex-col justify-center">
+                    <div class="flex items-baseline">
+                        <span class="text-6xl font-black text-primary">${displayVisits}</span>
+                        <span class="text-xl text-onSurfaceVariant font-bold">/ ${activeCampaign.totalVisits}</span>
+                    </div>
+                    <span class="text-[10px] font-bold text-onSurfaceVariant uppercase tracking-wider mt-2.5">
+                        ${isCardComplete ? 'Card Completed! 🎉' : `Next Stamp: Visit #${visits + 1}`}
+                    </span>
                 </div>
                 <div class="grid grid-cols-2 gap-x-4 gap-y-2">
                     ${ProfileStat("Card ID", escapeHTML(currentUser.id))}
@@ -877,7 +882,7 @@ function render(view = 'default') {
                         <input type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="4" id="staffPin" oninput="updatePinDots(this.value)" autocomplete="off" class="absolute inset-0 w-full h-full opacity-0">
                     </div>
                     ${nextRewardPill}
-                    ${PrimaryButton("Collect Stamp", "handleVisit(" + visits + ")")}
+                    ${PrimaryButton(`Collect Stamp for Visit #${visits + 1}`, "handleVisit(" + visits + ")")}
                 </div>
 
                 <button onclick="render('history')" class="text-primary font-bold text-xs uppercase tracking-[0.2em] border-b-2 border-primary border-opacity-20 pb-1 mx-auto block">Visit History</button>
@@ -1043,10 +1048,6 @@ async function handleRegistration() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
-
-        // Set success message for display on reload
-        const msg = getVisitSuccessMessage(1);
-        localStorage.setItem('stamp_success_message', msg);
 
         render('success');
     } catch (err) {
