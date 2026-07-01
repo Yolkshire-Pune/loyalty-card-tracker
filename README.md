@@ -16,6 +16,36 @@ The tracker lets customers activate a physical loyalty card by scanning its QR c
 - Lost physical cards cannot be replaced with recovered stamps.
 - The offer is valid until 31 December 2026.
 
+## PYC Member Variant
+
+The same app supports a member-exclusive PYC campaign when opened with:
+
+```text
+index.html?campaign=pyc&id=PYC001
+```
+
+Existing public QR links such as `index.html?id=YSLC001` continue to use the public campaign.
+
+PYC campaign rules:
+
+- 10 visits per card.
+- Fixed branch: `PYC`; no branch dropdown is shown.
+- Visit 5 reward: Free Drink/Dessert.
+- Visit 10 reward: Free Dish.
+- A PYC member ID is required during activation.
+- Member ID formats:
+  - Club/permanent members: `{Letter}-{4 digits}`, for example `B-0251` or `S-0072`.
+  - Departmental/gym members: `DM{4 digits}`, for example `DM1234` or `DM0067`.
+- Member IDs are normalized to uppercase and checked for uniqueness within the PYC SheetDB source.
+
+PYC admin dashboard:
+
+```text
+admin.html?campaign=pyc
+```
+
+The PYC dashboard reads from the separate PYC SheetDB API, shows PYC records only, includes member ID search/display, uses 10-visit completion, and hides branch filtering.
+
 ## Staff Instructions
 
 1. Give the loyalty card to the customer.
@@ -131,6 +161,8 @@ Both customer and admin flows use SheetDB:
 https://sheetdb.io/api/v1/im2qg2cit3cco
 ```
 
+The PYC campaign uses its own SheetDB API configured as `PYC_API_URL` in `js/app.js` and `js/admin.js`.
+
 Expected SheetDB fields:
 
 - `id`: card ID, for example `YSLC001`.
@@ -139,6 +171,10 @@ Expected SheetDB fields:
 - `visits`: current visit/stamp count.
 - `last_visit`: latest visit timestamp.
 - `history`: pipe-separated activation/visit history with optional branch suffixes.
+
+PYC records use the same fields plus:
+
+- `member_id`: normalized PYC member ID.
 
 Data integrity notes:
 

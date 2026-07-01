@@ -1,8 +1,36 @@
 // --- CONSTANTS ---
-const API_URL = "https://sheetdb.io/api/v1/im2qg2cit3cco";
+const PUBLIC_API_URL = "https://sheetdb.io/api/v1/im2qg2cit3cco";
+const PYC_API_URL = "https://sheetdb.io/api/v1/u51z5e743v1jr";
 const BUSINESS_WHATSAPP = '+918446536065';
 const INSTAGRAM_HANDLE = 'yolkshire';
 const BRAND_NAME = "Yolkshire's Golden Yolk Loyalty Program";
+const CAMPAIGNS = {
+    public: {
+        key: 'public',
+        apiUrl: PUBLIC_API_URL,
+        totalVisits: 9,
+        rewards: {
+            3: 'Free Beverage',
+            6: 'Free Dessert',
+            9: 'Free Meal'
+        },
+        fixedBranch: null,
+        requiresMemberId: false,
+        title: BRAND_NAME
+    },
+    pyc: {
+        key: 'pyc',
+        apiUrl: PYC_API_URL,
+        totalVisits: 10,
+        rewards: {
+            5: 'Free Drink/Dessert',
+            10: 'Free Dish'
+        },
+        fixedBranch: 'PYC',
+        requiresMemberId: true,
+        title: "Yolkshire's PYC Member Loyalty Program"
+    }
+};
 // [min, max] digit length (mobile) per ISD code
 const PHONE_RULES = {
     '+91':  [10, 10],  // India
@@ -45,6 +73,9 @@ const ENABLE_DAILY_LIMIT_CHECK = true;
 // --- STATE ---
 const urlParams = new URLSearchParams(window.location.search);
 const cardId = urlParams.get('id');
+const campaignParam = String(urlParams.get('campaign') || 'public').toLowerCase();
+const activeCampaign = CAMPAIGNS[campaignParam] || CAMPAIGNS.public;
+const API_URL = activeCampaign.apiUrl;
 let currentUser = null;
 let registering = false;
 let _dialogOnCancel = null;
@@ -104,6 +135,18 @@ function phoneAlreadyRegistered(rows, canonicalPhone, currentCardId) {
         hasRegisteredPhone(row) &&
         String(row.id || '').trim() !== String(currentCardId || '').trim() &&
         canonicalPhoneFromStored(row.phone) === canonicalPhone
+    );
+}
+
+function normalizeMemberId(raw) {
+    const value = String(raw || '').trim().toUpperCase();
+    return /^[A-Z]-\d{4}$/.test(value) || /^DM\d{4}$/.test(value) ? value : null;
+}
+
+function memberIdAlreadyRegistered(rows, memberId, currentCardId) {
+    return (Array.isArray(rows) ? rows : []).some(row =>
+        String(row.member_id || '').trim().toUpperCase() === memberId &&
+        String(row.id || '').trim() !== String(currentCardId || '').trim()
     );
 }
 
@@ -269,10 +312,24 @@ function groupLogsByMonth(logs) {
 
 // --- COMPONENT FACTORIES ---
 function getRewardName(visits) {
-    if (visits === 3) return "Free Beverage";
-    if (visits === 6) return "Free Dessert";
-    if (visits === 9) return "Free Meal";
+    const reward = activeCampaign.rewards[visits];
+    if (reward) return reward;
     return "Free Reward";
+}
+
+function getRewardMilestones() {
+    return Object.keys(activeCampaign.rewards)
+        .map(Number)
+        .sort((a, b) => a - b);
+}
+
+function isRewardVisit(visits) {
+    return Boolean(activeCampaign.rewards[visits]);
+}
+
+function getRewardIndex(visits) {
+    const idx = getRewardMilestones().indexOf(visits);
+    return idx >= 0 ? idx + 1 : null;
 }
 
 const PrimaryButton = (label, onClick) => `<button onclick="${onClick}" id="${onClick.split('(')[0]}Btn" class="btn-primary mb-3">${label}</button>`;
@@ -295,7 +352,7 @@ const ProfileStat = (label, value) => `
     </div>`;
 
 const HistoryItem = (d, visitIndex, branch) => {
-    const isMilestone = visitIndex > 0 && visitIndex % 3 === 0;
+    const isMilestone = visitIndex > 0 && isRewardVisit(visitIndex);
     const isActivation = visitIndex === 0;
     const titleText = isActivation ? "Card Collection Date" : `Visit #${visitIndex}`;
     const baseClasses = (isMilestone || isActivation)
@@ -377,7 +434,7 @@ function celebrateMilestone(rewardIdx, rewardName) {
         const label = el.querySelector('[data-reward-num]');
         const title = el.querySelector('h2');
         if (title) title.textContent = `${rewardName.toUpperCase()} UNLOCKED`;
-        if (label) label.textContent = `Reward ${rewardIdx}/3 Redeemed`;
+        if (label) label.textContent = `Reward ${rewardIdx}/${getRewardMilestones().length} Redeemed`;
         el.classList.remove('hidden');
         void el.offsetWidth;
         el.classList.add('milestone-active');
@@ -426,13 +483,15 @@ function handleManualId() {
     if (input) {
         const id = input.value.trim().toUpperCase();
         if (id) {
-            window.location.href = '?id=' + encodeURIComponent(id);
+            const campaignPart = activeCampaign.key === 'public' ? '' : `campaign=${encodeURIComponent(activeCampaign.key)}&`;
+            window.location.href = '?' + campaignPart + 'id=' + encodeURIComponent(id);
         }
     }
 }
 
 async function init() {
     if (!cardId) return render('home');
+    if (!API_URL) return showError("PYC SheetDB API URL is not configured yet.");
     try {
         const res = await fetch(`${API_URL}/search?id=${encodeURIComponent(cardId)}`);
         const data = await res.json();
@@ -446,11 +505,12 @@ function render(view = 'default') {
     document.getElementById('loader').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
     const container = document.getElementById('main-content');
+    const adminHref = activeCampaign.key === 'public' ? 'admin.html' : `admin.html?campaign=${encodeURIComponent(activeCampaign.key)}`;
 
     // --- VIEW: HOME (Landing Page) ---
     if (view === 'home') {
         container.innerHTML = `
-            <p class="text-sm font-semibold text-primary mb-8">${BRAND_NAME}</p>
+            <p class="text-sm font-semibold text-primary mb-8">${escapeHTML(activeCampaign.title)}</p>
             <h1 class="text-2xl font-bold text-gray-800 mb-8 tracking-tight">Who's checking in?</h1>
             
             <div class="space-y-4">
@@ -467,7 +527,7 @@ function render(view = 'default') {
                     <i class="fa-solid fa-chevron-right text-gray-300 group-hover:text-primary transition-colors"></i>
                 </button>
 
-                <button onclick="window.location.href='admin.html'" class="btn-choice">
+                <button onclick="window.location.href='${adminHref}'" class="btn-choice">
                     <div class="flex items-center gap-4">
                         <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 group-hover:bg-primary/10 group-hover:text-primary transition-all">
                             <i class="fa-solid fa-shield-halved text-xl"></i>
@@ -488,7 +548,7 @@ function render(view = 'default') {
             <div class="absolute top-6 left-6 text-gray-400 hover:text-gray-800 transition-colors cursor-pointer" onclick="render('home')">
                 <i class="fa-solid fa-arrow-left text-xl"></i>
             </div>
-            <p class="text-sm font-semibold text-primary mb-4">${BRAND_NAME}</p>
+            <p class="text-sm font-semibold text-primary mb-4">${escapeHTML(activeCampaign.title)}</p>
             <h2 class="text-xl font-bold text-gray-800 mb-2 tracking-tight">Find Your Card</h2>
             
             <!-- 3D flipping card animation -->
@@ -519,7 +579,7 @@ function render(view = 'default') {
     else if (!currentUser?.name && view === 'default') {
         container.innerHTML = `
             <div class="p-6">
-                <p class="text-sm font-semibold text-primary mb-6">${BRAND_NAME}</p>
+                <p class="text-sm font-semibold text-primary mb-6">${escapeHTML(activeCampaign.title)}</p>
                 <p class="text-xs uppercase tracking-[0.2em] text-onSurfaceVariant font-semibold mb-3">Scan Detected</p>
                 <h1 class="text-2xl font-bold text-primary mb-12">#${escapeHTML(cardId)}</h1>
                 ${PrimaryButton("Activate Card", "render('register')")}
@@ -573,11 +633,18 @@ function render(view = 'default') {
                     <option value="+81">🇯🇵 +81 Japan</option>
                 </optgroup>
             </select>`;
-        container.innerHTML = `
-            <h2 class="text-xl font-semibold text-primary mb-2">Join Yolkshire's</h2>
-            <p class="text-primary font-semibold mb-6">Golden Yolk Loyalty Program</p>
-            ${OutlinedTextField("regName", "Full Name", "John Doe")}
-            ${OutlinedTextField("regPhone", "Phone Number", "9876543210", "tel", isdHTML)}
+        const memberIdHTML = activeCampaign.requiresMemberId
+            ? `${OutlinedTextField("regMemberId", "PYC Member ID", "B-0251 or DM1234")}`
+            : '';
+        const branchHTML = activeCampaign.fixedBranch
+            ? `
+            <div class="mt-4 text-left">
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">Collection Branch</label>
+                <div class="w-full border-2 border-gray-100 rounded-xl px-4 py-3.5 font-bold text-sm text-gray-800 bg-gray-50">
+                    ${escapeHTML(activeCampaign.fixedBranch)}
+                </div>
+            </div>`
+            : `
             <div class="mt-4 text-left">
                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">Collection Branch</label>
                 <div class="relative">
@@ -594,7 +661,14 @@ function render(view = 'default') {
                     </select>
                     <i class="fa-solid fa-chevron-down absolute right-4 top-4 text-gray-400 pointer-events-none"></i>
                 </div>
-            </div>
+            </div>`;
+        container.innerHTML = `
+            <h2 class="text-xl font-semibold text-primary mb-2">Join Yolkshire's</h2>
+            <p class="text-primary font-semibold mb-6">${escapeHTML(activeCampaign.title.replace("Yolkshire's ", ""))}</p>
+            ${OutlinedTextField("regName", "Full Name", "John Doe")}
+            ${OutlinedTextField("regPhone", "Phone Number", "9876543210", "tel", isdHTML)}
+            ${memberIdHTML}
+            ${branchHTML}
             <div class="mt-8">${PrimaryButton("Complete Activation", "handleRegistration()")}</div>
         `;
     }
@@ -605,7 +679,7 @@ function render(view = 'default') {
                 <div class="w-16 h-16 bg-green-100 text-primary rounded-full flex items-center justify-center mx-auto mb-6 text-2xl">✓</div>
                 <h2 class="text-2xl font-bold text-gray-800 mb-2 tracking-tight">Welcome aboard!</h2>
                 <p class="text-sm text-gray-500 mb-3 font-medium">Your loyalty card #${escapeHTML(currentUser.id)} is now active.</p>
-                <p class="text-sm font-semibold text-primary mb-10">${BRAND_NAME}</p>
+                <p class="text-sm font-semibold text-primary mb-10">${escapeHTML(activeCampaign.title)}</p>
                 ${PrimaryButton("Go to Profile", "location.reload()")}
             </div>
         `;
@@ -613,16 +687,20 @@ function render(view = 'default') {
     // --- VIEW: PROFILE ---
     else if (view === 'default' || view === 'profile') {
         const visits = parseInt(currentUser.visits) || 0;
-        const displayVisits = Math.min(Math.max(1, visits), 9);
-        const progress = Math.min((displayVisits / 9) * 100, 100);
+        const displayVisits = Math.min(Math.max(1, visits), activeCampaign.totalVisits);
+        const progress = Math.min((displayVisits / activeCampaign.totalVisits) * 100, 100);
         const firstName = escapeHTML((currentUser.name || '').split(' ')[0]);
         const g = getGreeting(firstName);
-        const isCardComplete = visits >= 10;
-        const isRewardEarned = !isCardComplete && visits > 0 && visits % 3 === 0;
-        const isNextReward = !isRewardEarned && !isCardComplete && (visits + 1) % 3 === 0;
+        const isCardComplete = visits >= activeCampaign.totalVisits;
+        const isRewardEarned = !isCardComplete && visits > 0 && isRewardVisit(visits);
+        const isNextReward = !isRewardEarned && !isCardComplete && isRewardVisit(visits + 1);
+        const memberStat = activeCampaign.requiresMemberId
+            ? `${ProfileStat("Member ID", escapeHTML(currentUser.member_id || '—'))}`
+            : '';
+        const finalRewardName = getRewardName(activeCampaign.totalVisits);
 
         const profileHeader = `
-            <p class="text-sm font-semibold text-primary mb-4 md:mb-3 md:text-xs">${BRAND_NAME}</p>
+            <p class="text-sm font-semibold text-primary mb-4 md:mb-3 md:text-xs">${escapeHTML(activeCampaign.title)}</p>
             <h2 class="text-xl font-bold text-gray-800 mb-1 tracking-tight leading-tight md:text-lg">${escapeHTML(g.headline)}</h2>
             <p class="text-sm text-onSurfaceVariant font-medium mb-6 md:mb-5 md:text-xs">${escapeHTML(g.tagline)}</p>
 
@@ -633,10 +711,11 @@ function render(view = 'default') {
             <div class="flex justify-between items-center mb-8 px-2 border-b border-gray-100 pb-8 gap-4">
                 <div class="text-left leading-none flex items-baseline">
                     <span class="text-6xl font-black text-primary">${displayVisits}</span>
-                    <span class="text-xl text-onSurfaceVariant font-bold">/ 9</span>
+                    <span class="text-xl text-onSurfaceVariant font-bold">/ ${activeCampaign.totalVisits}</span>
                 </div>
                 <div class="grid grid-cols-2 gap-x-4 gap-y-2">
                     ${ProfileStat("Card ID", escapeHTML(currentUser.id))}
+                    ${memberStat}
                     ${ProfileStat("Join Date", getJoinDate(currentUser))}
                     ${ProfileStat("Phone", escapeHTML(formatPhone(currentUser.phone)))}
                     ${ProfileStat(isCardComplete ? "Completed Date" : "Last Visit", escapeHTML(getLastVisitLabel(currentUser)))}
@@ -649,9 +728,9 @@ function render(view = 'default') {
                 ${profileHeader}
                 <div class="bg-gradient-to-br from-warning/25 to-warning/5 border-2 border-warning reward-glow rounded-3xl p-6 mb-6 text-center">
                     <i class="fa-solid fa-trophy text-warning text-5xl mb-3 gift-wiggle"></i>
-                    <p class="text-sm text-onSurface font-bold mb-2">🎉 Yayy, you're a certified Eggomaniac now</p>
+                    <p class="text-sm text-onSurface font-bold mb-2">Yayy, you're a certified Eggomaniac now</p>
                     <p class="text-sm text-onSurface font-medium mb-4">
-                        You've collected all 9 stamps and earned a Free Meal. Thank you for being part of ${BRAND_NAME}!
+                        You've collected all ${activeCampaign.totalVisits} stamps and earned a ${finalRewardName}. Thank you for being part of ${escapeHTML(activeCampaign.title)}!
                     </p>
                     <p class="text-sm text-onSurfaceVariant font-medium">
                         Follow us on Instagram
@@ -684,11 +763,14 @@ function render(view = 'default') {
             const nextRewardPill = isNextReward ? `
                 <div class="mb-4 py-1.5 px-3 bg-warning bg-opacity-10 text-primary text-[10px] font-black uppercase tracking-widest border border-warning border-opacity-20 rounded-lg text-center">${nextRewardName} on next visit</div>
             ` : '';
-
-            container.innerHTML = `
-                ${profileHeader}
-                <div class="${rewardCardClasses} rounded-3xl p-6 mb-6">
-                    ${heroBanner}
+            const branchControl = activeCampaign.fixedBranch
+                ? `
+                    <div class="mb-4 text-left">
+                        <div class="w-full border border-gray-100 rounded-xl px-4 py-3 font-bold text-sm bg-surfaceVariant text-onSurface">
+                            Branch: ${escapeHTML(activeCampaign.fixedBranch)}
+                        </div>
+                    </div>`
+                : `
                     <div class="mb-4 text-left">
                         <select id="branchSelect" class="w-full border border-outline rounded-xl px-4 py-3 font-bold text-sm outline-none bg-surface focus:border-primary focus:ring-1 focus:ring-primary transition-all">
                             <option value="" disabled selected>Select Branch...</option>
@@ -701,7 +783,13 @@ function render(view = 'default') {
                             <option value="PYC">PYC</option>
                             <option value="Bavdhan">Bavdhan</option>
                         </select>
-                    </div>
+                    </div>`;
+
+            container.innerHTML = `
+                ${profileHeader}
+                <div class="${rewardCardClasses} rounded-3xl p-6 mb-6">
+                    ${heroBanner}
+                    ${branchControl}
                     <div class="flex items-center gap-2 mb-4 justify-center">
                         <label class="block text-xs font-bold text-onSurfaceVariant uppercase tracking-widest">Staff PIN</label>
                         <button onclick="showDialog('Staff Area', 'Ask your server to enter their pin to collect stamp.')" class="text-onSurfaceVariant text-xs hover:text-primary transition-colors"><i class="fa-solid fa-circle-info"></i></button>
@@ -761,9 +849,20 @@ async function handleRegistration() {
     const isd = document.getElementById('isd').value;
     const rawPhone = document.getElementById('regPhone').value;
     const branchSelect = document.getElementById('regBranch');
-    const branchName = branchSelect ? branchSelect.value : '';
+    const branchName = activeCampaign.fixedBranch || (branchSelect ? branchSelect.value : '');
+    const memberId = activeCampaign.requiresMemberId
+        ? normalizeMemberId(document.getElementById('regMemberId')?.value)
+        : '';
+    const resetButton = () => {
+        registering = false;
+        if (btn) { btn.disabled = false; btn.innerHTML = "Complete Activation"; }
+    };
 
     if (!branchName) return showDialog("Select Branch", "Please select the collection branch.");
+
+    if (activeCampaign.requiresMemberId && !memberId) {
+        return showDialog("Invalid Member ID", "Enter a valid PYC member ID, such as B-0251, S-0072, DM1234, or DM0067.");
+    }
 
     const name = sanitizeName(rawName);
     if (!name) return showDialog("Invalid Name", "Please enter a valid name (2-50 letters, spaces or dots).");
@@ -781,22 +880,28 @@ async function handleRegistration() {
         const globalUsers = await res.json();
         
         if (phoneAlreadyRegistered(globalUsers, fullPhone, cardId)) {
-            registering = false;
-            if (btn) { btn.disabled = false; btn.innerHTML = "Complete Activation"; }
+            resetButton();
             return showDialog("Phone Exists", "Phone number already registered. Please try a different number.");
+        }
+
+        if (activeCampaign.requiresMemberId && memberIdAlreadyRegistered(globalUsers, memberId, cardId)) {
+            resetButton();
+            return showDialog("Member ID Exists", "This PYC member ID is already registered. Please check the ID and try again.");
         }
 
         const todayStr = new Date().toISOString();
         const historyLog = `${todayStr}@${branchName}`;
+        const payload = { name, phone: fullPhone, visits: 0, last_visit: todayStr, history: historyLog };
+        if (activeCampaign.requiresMemberId) payload.member_id = memberId;
 
         await fetch(`${API_URL}/id/${encodeURIComponent(cardId)}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, phone: fullPhone, visits: 0, last_visit: todayStr, history: historyLog })
+            body: JSON.stringify(payload)
         });
         render('success');
     } catch (err) {
-        registering = false;
+        resetButton();
         showError("Database connection failed. Refresh and try again.");
     }
 }
@@ -810,16 +915,17 @@ async function handleVisit(currentVisits) {
     const newVisitCount = currentVisits + 1;
     // Celebration fires on the stamp AFTER a reward was earned (confirms redemption),
     // plus on the final stamp itself (card-complete moment, no next visit available).
-    const isPostRewardStamp = currentVisits > 0 && currentVisits % 3 === 0 && currentVisits < 9; 
-    const isFinalStamp = currentVisits === 9; // redeeming the 9th stamp 
-    const shouldCelebrate = isPostRewardStamp || isFinalStamp;
-    const rewardIdx = isFinalStamp ? 3 : (isPostRewardStamp ? currentVisits / 3 : null);
+    const isPostRewardStamp = currentVisits > 0 && isRewardVisit(currentVisits) && currentVisits < activeCampaign.totalVisits;
+    const isFinalStamp = newVisitCount === activeCampaign.totalVisits && isRewardVisit(newVisitCount);
+    const rewardVisit = isFinalStamp ? newVisitCount : (isPostRewardStamp ? currentVisits : null);
+    const shouldCelebrate = rewardVisit != null;
+    const rewardIdx = shouldCelebrate ? getRewardIndex(rewardVisit) : null;
 
-    console.log(`[DEBUG] handleVisit: currentVisits=${currentVisits} → newVisitCount=${newVisitCount}, postReward=${isPostRewardStamp}, final=${isFinalStamp}, rewardIdx=${rewardIdx}`);
+    console.log(`[DEBUG] handleVisit: currentVisits=${currentVisits} -> newVisitCount=${newVisitCount}, postReward=${isPostRewardStamp}, final=${isFinalStamp}, rewardIdx=${rewardIdx}`);
 
     const pin = document.getElementById('staffPin').value;
     const branchSelect = document.getElementById('branchSelect');
-    const branchName = branchSelect ? branchSelect.value : '';
+    const branchName = activeCampaign.fixedBranch || (branchSelect ? branchSelect.value : '');
 
     if (!branchName) {
         reenable();
@@ -840,29 +946,29 @@ async function handleVisit(currentVisits) {
         console.log("[DEBUG] Daily Limit check is DISABLED for testing.");
     }
 
-    if (currentVisits >= 10) {
+    if (currentVisits >= activeCampaign.totalVisits) {
         reenable();
         return showDialog("Card Complete", "Guest has already completed this card. Please generate a new card number.");
     }
 
     if (shouldCelebrate) {
         const firstName = (currentUser.name || '').split(' ')[0] || 'the guest';
-        const rName = getRewardName(rewardIdx * 3);
+        const rName = getRewardName(rewardVisit);
         const message = isFinalStamp
             ? `Final stamp of the card! Did ${firstName} redeem their ${rName} today? Stamping will proceed regardless.`
             : `Welcome back! Did ${firstName} redeem their ${rName} from their last visit? Stamping will proceed regardless.`;
         ConfirmDialog(
             `${rName} 🎁`,
             message,
-            () => proceedStamp(newVisitCount, rewardIdx, branchName),
-            () => proceedStamp(newVisitCount, rewardIdx, branchName)
+            () => proceedStamp(newVisitCount, rewardIdx, branchName, rewardVisit),
+            () => proceedStamp(newVisitCount, rewardIdx, branchName, rewardVisit)
         );
     } else {
-        proceedStamp(newVisitCount, null, branchName);
+        proceedStamp(newVisitCount, null, branchName, null);
     }
 }
 
-async function proceedStamp(newVisitCount, rewardIdx, branchName) {
+async function proceedStamp(newVisitCount, rewardIdx, branchName, rewardVisit) {
     const btn = document.getElementById('handleVisitBtn');
     if (btn) btn.innerHTML = "Stamping...";
 
@@ -882,8 +988,8 @@ async function proceedStamp(newVisitCount, rewardIdx, branchName) {
             })
         });
 
-        if (rewardIdx != null) {
-            await celebrateMilestone(rewardIdx, getRewardName(rewardIdx * 3));
+        if (rewardIdx != null && rewardVisit != null) {
+            await celebrateMilestone(rewardIdx, getRewardName(rewardVisit));
         }
         location.reload();
     } catch (err) { showError("Database connection failed. Visit not stamped."); }
