@@ -852,6 +852,7 @@ function render(view = 'default') {
             ${capsulesHTML}
 
             <div class="w-full mb-8 px-2 border-b border-gray-100 pb-8">
+                ${activeCampaign.requiresMemberId ? `
                 <div class="grid grid-cols-2 gap-x-5 gap-y-2.5 text-left w-full">
                     ${ProfileStat("Card ID", escapeHTML(currentUser.id))}
                     ${memberStat}
@@ -860,6 +861,14 @@ function render(view = 'default') {
                     ${ProfileStat("Join Date", getJoinDate(currentUser))}
                     ${ProfileStat(isCardComplete ? "Completed Date" : "Last Visit", escapeHTML(getLastVisitLabel(currentUser)))}
                 </div>
+                ` : `
+                <div class="grid grid-cols-2 gap-x-5 gap-y-2.5 text-left w-full">
+                    ${ProfileStat("Card ID", escapeHTML(currentUser.id))}
+                    ${ProfileStat("Phone", escapeHTML(formatPhone(currentUser.phone)))}
+                    ${ProfileStat("Join Date", getJoinDate(currentUser))}
+                    ${ProfileStat(isCardComplete ? "Completed Date" : "Last Visit", escapeHTML(getLastVisitLabel(currentUser)))}
+                </div>
+                `}
             </div>
         `;
 
