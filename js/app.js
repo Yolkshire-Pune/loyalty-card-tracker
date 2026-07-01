@@ -33,38 +33,38 @@ const CAMPAIGNS = {
 };
 // [min, max] digit length (mobile) per ISD code
 const PHONE_RULES = {
-    '+91':  [10, 10],  // India
-    '+1':   [10, 10],  // USA / Canada
-    '+44':  [10, 10],  // UK
-    '+61':  [9, 9],    // Australia
-    '+64':  [8, 10],   // New Zealand
+    '+91': [10, 10],  // India
+    '+1': [10, 10],  // USA / Canada
+    '+44': [10, 10],  // UK
+    '+61': [9, 9],    // Australia
+    '+64': [8, 10],   // New Zealand
     '+971': [9, 9],    // UAE
     '+966': [9, 9],    // Saudi Arabia
     '+974': [8, 8],    // Qatar
     '+968': [8, 8],    // Oman
     '+965': [8, 8],    // Kuwait
     '+973': [8, 8],    // Bahrain
-    '+65':  [8, 8],    // Singapore
-    '+60':  [9, 10],   // Malaysia
-    '+66':  [9, 9],    // Thailand
-    '+62':  [9, 12],   // Indonesia
-    '+63':  [10, 10],  // Philippines
-    '+81':  [10, 10],  // Japan
-    '+86':  [11, 11],  // China
-    '+82':  [9, 10],   // South Korea
+    '+65': [8, 8],    // Singapore
+    '+60': [9, 10],   // Malaysia
+    '+66': [9, 9],    // Thailand
+    '+62': [9, 12],   // Indonesia
+    '+63': [10, 10],  // Philippines
+    '+81': [10, 10],  // Japan
+    '+86': [11, 11],  // China
+    '+82': [9, 10],   // South Korea
     '+852': [8, 8],    // Hong Kong
-    '+49':  [10, 11],  // Germany
-    '+33':  [9, 9],    // France
-    '+39':  [9, 10],   // Italy
-    '+34':  [9, 9],    // Spain
-    '+31':  [9, 9],    // Netherlands
-    '+41':  [9, 9],    // Switzerland
-    '+46':  [9, 9],    // Sweden
-    '+47':  [8, 8],    // Norway
+    '+49': [10, 11],  // Germany
+    '+33': [9, 9],    // France
+    '+39': [9, 10],   // Italy
+    '+34': [9, 9],    // Spain
+    '+31': [9, 9],    // Netherlands
+    '+41': [9, 9],    // Switzerland
+    '+46': [9, 9],    // Sweden
+    '+47': [8, 8],    // Norway
     '+353': [9, 9],    // Ireland
-    '+92':  [10, 10],  // Pakistan
+    '+92': [10, 10],  // Pakistan
     '+880': [10, 10],  // Bangladesh
-    '+94':  [9, 9],    // Sri Lanka
+    '+94': [9, 9],    // Sri Lanka
     '+977': [10, 10],  // Nepal
 };
 // Production guard: one stamp per card per Asia/Kolkata calendar day.
@@ -84,12 +84,12 @@ let _dialogOnCancel = null;
 // Set your Firebase Web App configuration credentials below to enable automated SMS OTP verification.
 // Leave the fields empty to run without phone number verification.
 const FIREBASE_CONFIG = {
-    apiKey: "",
-    authDomain: "",
-    projectId: "",
-    storageBucket: "",
-    messagingSenderId: "",
-    appId: ""
+    apiKey: "AIzaSyAmsluv1zmLZLsZW-gkxBzomaNXnvufGiI",
+    authDomain: "yolkshire-loyalty-program.firebaseapp.com",
+    projectId: "yolkshire-loyalty-program",
+    storageBucket: "yolkshire-loyalty-program.firebasestorage.app",
+    messagingSenderId: "837492183538",
+    appId: "1:837492183538:web:69f8044f4ebc1412439b6b"
 };
 
 const ENABLE_PHONE_VERIFICATION = Boolean(FIREBASE_CONFIG.apiKey);
@@ -105,7 +105,7 @@ if (ENABLE_PHONE_VERIFICATION) {
 
 // --- SANITIZATION HELPERS ---
 function escapeHTML(s) {
-    return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 function sanitizeName(raw) {
     const t = (raw || '').trim().replace(/\s+/g, ' ');
@@ -196,11 +196,11 @@ function formatPhone(stored) {
     const { code, digits } = splitPhone(stored);
     if (!code) return stored;
     const grouped =
-        digits.length === 10 ? `${digits.slice(0,5)} ${digits.slice(5)}` :
-        digits.length === 9  ? `${digits.slice(0,3)} ${digits.slice(3,6)} ${digits.slice(6)}` :
-        digits.length === 8  ? `${digits.slice(0,4)} ${digits.slice(4)}` :
-        digits.length === 11 ? `${digits.slice(0,3)} ${digits.slice(3,7)} ${digits.slice(7)}` :
-        digits;
+        digits.length === 10 ? `${digits.slice(0, 5)} ${digits.slice(5)}` :
+            digits.length === 9 ? `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}` :
+                digits.length === 8 ? `${digits.slice(0, 4)} ${digits.slice(4)}` :
+                    digits.length === 11 ? `${digits.slice(0, 3)} ${digits.slice(3, 7)} ${digits.slice(7)}` :
+                        digits;
     return `(${code}) ${grouped}`;
 }
 
@@ -290,10 +290,10 @@ function getLastVisitLabel(user) {
 
 function getGreeting(firstName) {
     const hr = parseInt(new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', hour12: false }).format(new Date()));
-    if (hr >= 5  && hr < 11) return { headline: `Good morning, ${firstName}!`,                    tagline: 'Ready for your morning protein fix?' };
-    if (hr >= 11 && hr < 16) return { headline: `Egg-cellent choice for lunch, ${firstName}!`,    tagline: 'Your stamp awaits.' };
-    if (hr >= 16 && hr < 21) return { headline: `Winding down, ${firstName}?`,                    tagline: 'Perfect time for a Golden Yolk visit.' };
-    return                         { headline: `Late-night cravings, ${firstName}?`,              tagline: "Yolkshire's got your back." };
+    if (hr >= 5 && hr < 11) return { headline: `Good morning, ${firstName}!`, tagline: 'Ready for your morning protein fix?' };
+    if (hr >= 11 && hr < 16) return { headline: `Egg-cellent choice for lunch, ${firstName}!`, tagline: 'Your stamp awaits.' };
+    if (hr >= 16 && hr < 21) return { headline: `Winding down, ${firstName}?`, tagline: 'Perfect time for a Golden Yolk visit.' };
+    return { headline: `Late-night cravings, ${firstName}?`, tagline: "Yolkshire's got your back." };
 }
 function getJoinDate(user) {
     if (!user.history) return '—';
@@ -316,7 +316,7 @@ function groupLogsByMonth(logs) {
             const d = parseStoredDate(iso);
             if (isNaN(d)) return;
             parsed.push({ d, branch, visitIndex: i + 1 });
-        } catch {}
+        } catch { }
     });
     parsed.reverse(); // newest first
     const groups = [];
@@ -423,7 +423,7 @@ function showDialog(title, message, opts = {}) {
 
     _dialogOnCancel = onCancel; // backdrop-dismiss fires this
     confirmBtn.onclick = () => { _dialogOnCancel = null; closeDialog(); if (onConfirm) onConfirm(); };
-    cancelBtn.onclick  = () => { _dialogOnCancel = null; closeDialog(); if (onCancel)  onCancel();  };
+    cancelBtn.onclick = () => { _dialogOnCancel = null; closeDialog(); if (onCancel) onCancel(); };
 
     dialog.classList.remove('hidden');
     void dialog.offsetWidth; // force reflow so transition runs from closed→open
@@ -447,7 +447,7 @@ function fireConfetti() {
     if (typeof confetti !== 'function') return;
     const colors = ['#fcc314', '#0d6a37', '#ffffff'];
     confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 }, colors });
-    setTimeout(() => confetti({ particleCount: 60, angle: 60,  spread: 55, origin: { x: 0 }, colors }), 250);
+    setTimeout(() => confetti({ particleCount: 60, angle: 60, spread: 55, origin: { x: 0 }, colors }), 250);
     setTimeout(() => confetti({ particleCount: 60, angle: 120, spread: 55, origin: { x: 1 }, colors }), 400);
 }
 function celebrateMilestone(rewardIdx, rewardName) {
@@ -536,7 +536,7 @@ function getVisitSuccessMessage(visits) {
     if (visits >= activeCampaign.totalVisits) {
         return `${visits}${suffix} Visit Completed. You have completed your card! See you soon.`;
     }
-    const milestones = Object.keys(activeCampaign.rewards).map(Number).sort((a,b) => a-b);
+    const milestones = Object.keys(activeCampaign.rewards).map(Number).sort((a, b) => a - b);
     const nextMilestone = milestones.find(m => m > visits) || activeCampaign.totalVisits;
     const remaining = nextMilestone - visits;
     return `${visits}${suffix} Visit Completed. ${remaining} more visit${remaining > 1 ? 's' : ''} before your free reward. See you soon.`;
@@ -550,10 +550,10 @@ async function init() {
         const data = await res.json();
         if (data.length === 0) return showError("Card ID not found in database.");
         currentUser = data[0];
-        
+
         // Self-healing: normalize old records in-memory
         normalizeUserRecord(currentUser);
-        
+
         render();
 
         // Check for pending success message from stamping or registration
@@ -953,7 +953,7 @@ async function handleRegistration() {
             // First check if phone number already exists to avoid sending unnecessary SMS
             const res = await fetch(API_URL);
             const globalUsers = await res.json();
-            
+
             if (phoneAlreadyRegistered(globalUsers, fullPhone, cardId)) {
                 resetButton();
                 return showDialog("Phone Exists", "Phone number already registered. Please try a different number.");
@@ -973,7 +973,7 @@ async function handleRegistration() {
 
             const confirmationResult = await firebase.auth().signInWithPhoneNumber(fullPhone, window.recaptchaVerifier);
             confirmationResultObj = confirmationResult;
-            
+
             // Show OTP input and change button
             document.getElementById('otp-area').classList.remove('hidden');
             // Disable other fields to prevent modification after OTP is sent
@@ -1022,7 +1022,7 @@ async function handleRegistration() {
     try {
         const res = await fetch(API_URL);
         const globalUsers = await res.json();
-        
+
         if (phoneAlreadyRegistered(globalUsers, fullPhone, cardId)) {
             resetButton();
             return showDialog("Phone Exists", "Phone number already registered. Please try a different number.");
