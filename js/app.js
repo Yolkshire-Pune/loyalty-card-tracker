@@ -486,6 +486,37 @@ function celebrateMilestone(rewardIdx, rewardName) {
     });
 }
 
+// --- TOAST NOTIFICATIONS ---
+function ensureToastElement() {
+    if (!document.getElementById('toast')) {
+        const div = document.createElement('div');
+        div.id = 'toast';
+        div.className = 'fixed top-6 left-1/2 transform -translate-x-1/2 z-[9999] flex items-center gap-2 bg-gray-900 text-white px-4 py-2.5 rounded-xl shadow-xl transition-all duration-300 opacity-0 pointer-events-none -translate-y-2';
+        div.innerHTML = `
+            <i class="fa-solid fa-circle-check text-green-400 text-sm"></i>
+            <span id="toast-message" class="text-xs font-bold"></span>
+        `;
+        document.body.appendChild(div);
+    }
+}
+function showToast(message) {
+    ensureToastElement();
+    const toast = document.getElementById('toast');
+    const msgSpan = document.getElementById('toast-message');
+    if (toast && msgSpan) {
+        msgSpan.textContent = message;
+        toast.classList.remove('opacity-0', 'pointer-events-none', '-translate-y-2');
+        toast.classList.add('opacity-100', 'translate-y-0');
+    }
+}
+function hideToast() {
+    const toast = document.getElementById('toast');
+    if (toast) {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', 'pointer-events-none', '-translate-y-2');
+    }
+}
+
 // --- FEATURE HELPERS ---
 function openWhatsAppFeedback(visits) {
     const suffix = ['st', 'nd', 'rd'][visits - 1] || 'th';
@@ -563,16 +594,6 @@ async function init() {
         normalizeUserRecord(currentUser);
 
         render();
-
-        // Check for pending success message from stamping or registration
-        const successMsg = localStorage.getItem('stamp_success_message');
-        if (successMsg) {
-            localStorage.removeItem('stamp_success_message');
-            // Slight delay so the UI fully loads in the background first
-            setTimeout(() => {
-                showDialog("Stamp Success", successMsg);
-            }, 300);
-        }
     } catch (err) { showError("Database connection failed. Check your SheetDB setup."); }
 }
 
@@ -771,8 +792,11 @@ function render(view = 'default') {
         const firstName = escapeHTML((currentUser.name || '').split(' ')[0]);
         const g = getGreeting(firstName);
         const isCardComplete = visits >= activeCampaign.totalVisits;
-        const isRewardEarned = !isCardComplete && visits > 0 && isRewardVisit(visits);
-        const isNextReward = !isRewardEarned && !isCardComplete && isRewardVisit(visits + 1);
+        
+        const nextVisitNumber = visits + 1;
+        const isRewardEarned = !isCardComplete && isRewardVisit(nextVisitNumber);
+        const isNextReward = !isRewardEarned && !isCardComplete && isRewardVisit(nextVisitNumber + 1);
+
         const memberStat = activeCampaign.requiresMemberId
             ? `${ProfileStat("Member ID", escapeHTML(currentUser.member_id || '—'))}`
             : '';
@@ -791,16 +815,18 @@ function render(view = 'default') {
             if (isReward) {
                 if (isFilled) {
                     bgClass = 'bg-warning text-primary flex items-center justify-center shadow-inner';
-                    content = '<i class="fa-solid fa-gift text-[9px] gift-wiggle"></i>';
+                    content = '<i class="fa-solid fa-check text-[10px]"></i>';
                 } else {
-                    bgClass = 'bg-warning/5 border border-warning/35 flex items-center justify-center';
-                    content = '<i class="fa-solid fa-gift text-[9px] text-warning/40"></i>';
+                    bgClass = 'bg-warning/5 border border-warning/35 flex items-center justify-center text-warning/70';
+                    content = `<span class="text-[10px] font-black">${i}</span>`;
                 }
             } else {
                 if (isFilled) {
-                    bgClass = 'bg-primary shadow-inner';
+                    bgClass = 'bg-primary text-white flex items-center justify-center shadow-inner';
+                    content = '<i class="fa-solid fa-check text-[10px]"></i>';
                 } else {
-                    bgClass = 'bg-surfaceVariant bg-opacity-65 border border-outline/20';
+                    bgClass = 'bg-surfaceVariant bg-opacity-65 border border-outline/20 flex items-center justify-center text-onSurfaceVariant/45';
+                    content = `<span class="text-[10px] font-black">${i}</span>`;
                 }
             }
             
@@ -853,7 +879,7 @@ function render(view = 'default') {
                 ? 'bg-gradient-to-br from-warning/25 to-warning/5 border-2 border-warning reward-glow'
                 : 'bg-surfaceVariant bg-opacity-30 border border-gray-100';
 
-            const rewardName = getRewardName(visits);
+            const rewardName = getRewardName(nextVisitNumber);
             const heroBanner = isRewardEarned ? `
                 <div class="mb-5 text-center">
                     <i class="fa-solid fa-gift gift-wiggle text-warning text-5xl mb-3"></i>
@@ -862,7 +888,7 @@ function render(view = 'default') {
                 </div>
             ` : '';
 
-            const nextRewardName = getRewardName(visits + 1);
+            const nextRewardName = getRewardName(nextVisitNumber + 1);
             const nextRewardPill = isNextReward ? `
                 <div class="mb-4 py-1.5 px-3 bg-warning bg-opacity-10 text-primary text-[10px] font-black uppercase tracking-widest border border-warning border-opacity-20 rounded-lg text-center">${nextRewardName} on next visit</div>
             ` : '';
@@ -1086,16 +1112,6 @@ async function handleVisit(currentVisits) {
     const reenable = () => { if (btn) btn.disabled = false; };
 
     const newVisitCount = currentVisits + 1;
-    // Celebration fires on the stamp AFTER a reward was earned (confirms redemption),
-    // plus on the final stamp itself (card-complete moment, no next visit available).
-    const isPostRewardStamp = currentVisits > 0 && isRewardVisit(currentVisits) && currentVisits < activeCampaign.totalVisits;
-    const isFinalStamp = newVisitCount === activeCampaign.totalVisits && isRewardVisit(newVisitCount);
-    const rewardVisit = isFinalStamp ? newVisitCount : (isPostRewardStamp ? currentVisits : null);
-    const shouldCelebrate = rewardVisit != null;
-    const rewardIdx = shouldCelebrate ? getRewardIndex(rewardVisit) : null;
-
-    console.log(`[DEBUG] handleVisit: currentVisits=${currentVisits} -> newVisitCount=${newVisitCount}, postReward=${isPostRewardStamp}, final=${isFinalStamp}, rewardIdx=${rewardIdx}`);
-
     const pin = document.getElementById('staffPin').value;
     const branchSelect = document.getElementById('branchSelect');
     const branchName = activeCampaign.fixedBranch || (branchSelect ? branchSelect.value : '');
@@ -1115,61 +1131,60 @@ async function handleVisit(currentVisits) {
             reenable();
             return showDialog("Daily Limit", "Oops! Guest is allowed only one visit per day to collect a stamp.");
         }
-    } else {
-        console.log("[DEBUG] Daily Limit check is DISABLED for testing.");
     }
 
     if (currentVisits >= activeCampaign.totalVisits) {
         reenable();
-        return showDialog("Card Complete", "Guest has already completed this card. Please generate a new card number.");
+        return showDialog("Card Complete", "Guest has already completed this card.");
     }
 
-    if (shouldCelebrate) {
-        const firstName = (currentUser.name || '').split(' ')[0] || 'the guest';
-        const rName = getRewardName(rewardVisit);
-        const message = isFinalStamp
-            ? `Final stamp of the card! Did ${firstName} redeem their ${rName} today? Stamping will proceed regardless.`
-            : `Welcome back! Did ${firstName} redeem their ${rName} from their last visit? Stamping will proceed regardless.`;
-        ConfirmDialog(
-            `${rName} 🎁`,
-            message,
-            () => proceedStamp(newVisitCount, rewardIdx, branchName, rewardVisit),
-            () => proceedStamp(newVisitCount, rewardIdx, branchName, rewardVisit)
-        );
-    } else {
-        proceedStamp(newVisitCount, null, branchName, null);
+    // Clear PIN input immediately so it doesn't linger
+    const pinInput = document.getElementById('staffPin');
+    if (pinInput) {
+        pinInput.value = '';
+        updatePinDots('');
     }
-}
-
-async function proceedStamp(newVisitCount, rewardIdx, branchName, rewardVisit) {
-    const btn = document.getElementById('handleVisitBtn');
-    if (btn) btn.innerHTML = "Stamping...";
 
     const now = new Date();
     const nowIso = now.toISOString();
-    const logEntry = branchName ? now.toISOString() + "@" + branchName : now.toISOString();
+    const logEntry = branchName ? nowIso + "@" + branchName : nowIso;
     const updatedHistory = currentUser.history ? currentUser.history + "|" + logEntry : logEntry;
 
-    try {
-        await fetch(`${API_URL}/id/${encodeURIComponent(cardId)}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                visits: newVisitCount,
-                last_visit: nowIso,
-                history: updatedHistory
-            })
-        });
+    // Trigger API call in the background
+    fetch(`${API_URL}/id/${encodeURIComponent(currentUser.id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            visits: newVisitCount,
+            last_visit: nowIso,
+            history: updatedHistory
+        })
+    }).catch(err => {
+        console.error("Background sync failed:", err);
+    });
 
-        // Set success message for display on reload
-        const msg = getVisitSuccessMessage(newVisitCount);
-        localStorage.setItem('stamp_success_message', msg);
+    const isReward = isRewardVisit(newVisitCount);
 
-        if (rewardIdx != null && rewardVisit != null) {
-            await celebrateMilestone(rewardIdx, getRewardName(rewardVisit));
-        }
-        location.reload();
-    } catch (err) { showError("Database connection failed. Visit not stamped."); }
+    if (isReward) {
+        // Reward visit: show confetti immediately, update UI in-place immediately
+        fireConfetti();
+        currentUser.visits = newVisitCount;
+        currentUser.last_visit = nowIso;
+        currentUser.history = updatedHistory;
+        render();
+    } else {
+        // Normal visit: show clean toast, wait 1.5s, then update UI
+        ensureToastElement();
+        showToast(`Stamp collected for Visit ${newVisitCount}!`);
+        
+        setTimeout(() => {
+            hideToast();
+            currentUser.visits = newVisitCount;
+            currentUser.last_visit = nowIso;
+            currentUser.history = updatedHistory;
+            render();
+        }, 1500);
+    }
 }
 
 function showError(msg) {
