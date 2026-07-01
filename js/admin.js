@@ -22,7 +22,7 @@ const CAMPAIGNS = {
         totalVisits: 10,
         rewards: {
             5: 'Free Drink/Dessert',
-            10: 'Free Dish'
+            10: 'Free Dish/Dessert'
         },
         fixedBranch: 'PYC',
         showMemberId: true

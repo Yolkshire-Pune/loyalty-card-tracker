@@ -24,7 +24,7 @@ const CAMPAIGNS = {
         totalVisits: 10,
         rewards: {
             5: 'Free Drink/Dessert',
-            10: 'Free Dish'
+            10: 'Free Dish/Dessert'
         },
         fixedBranch: 'PYC',
         requiresMemberId: true,
@@ -312,6 +312,17 @@ function getJoinDate(user) {
         if (isNaN(d)) return '—';
         return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
     } catch { return '—'; }
+}
+function getLastBranch(user) {
+    if (activeCampaign.fixedBranch) return activeCampaign.fixedBranch;
+    if (!user || !user.history) return '—';
+    const logs = user.history.split('|').filter(Boolean);
+    if (logs.length === 0) return '—';
+    const latest = logs[logs.length - 1];
+    if (latest.includes('@')) {
+        return latest.split('@')[1];
+    }
+    return '—';
 }
 function groupLogsByMonth(logs) {
     const parsed = [];
@@ -752,7 +763,6 @@ function render(view = 'default') {
                         <option value="Pimple Saudagar">Pimple Saudagar</option>
                         <option value="Wadgaon Sheri">Wadgaon Sheri</option>
                         <option value="Wakad">Wakad</option>
-                        <option value="PYC">PYC</option>
                         <option value="Bavdhan">Bavdhan</option>
                     </select>
                     <i class="fa-solid fa-chevron-down absolute right-4 top-4 text-gray-400 pointer-events-none"></i>
@@ -798,8 +808,8 @@ function render(view = 'default') {
         const isNextReward = !isRewardEarned && !isCardComplete && isRewardVisit(nextVisitNumber + 1);
 
         const memberStat = activeCampaign.requiresMemberId
-            ? `${ProfileStat("Member ID", escapeHTML(currentUser.member_id || '—'))}`
-            : '';
+            ? ProfileStat("Member ID", escapeHTML(currentUser.member_id || '—'))
+            : ProfileStat("", "");
         const finalRewardName = getRewardName(activeCampaign.totalVisits);
 
         // Generate dynamic capsule progress steps
@@ -845,8 +855,9 @@ function render(view = 'default') {
                 <div class="grid grid-cols-2 gap-x-5 gap-y-2.5 text-left w-full">
                     ${ProfileStat("Card ID", escapeHTML(currentUser.id))}
                     ${memberStat}
-                    ${ProfileStat("Join Date", getJoinDate(currentUser))}
+                    ${ProfileStat("Branch", getLastBranch(currentUser))}
                     ${ProfileStat("Phone", escapeHTML(formatPhone(currentUser.phone)))}
+                    ${ProfileStat("Join Date", getJoinDate(currentUser))}
                     ${ProfileStat(isCardComplete ? "Completed Date" : "Last Visit", escapeHTML(getLastVisitLabel(currentUser)))}
                 </div>
             </div>
@@ -893,12 +904,7 @@ function render(view = 'default') {
                 <div class="mb-4 py-1.5 px-3 bg-warning bg-opacity-10 text-primary text-[10px] font-black uppercase tracking-widest border border-warning border-opacity-20 rounded-lg text-center">${nextRewardName} on next visit</div>
             ` : '';
             const branchControl = activeCampaign.fixedBranch
-                ? `
-                    <div class="mb-4 text-left">
-                        <div class="w-full border border-gray-100 rounded-xl px-4 py-3 font-bold text-sm bg-surfaceVariant text-onSurface">
-                            Branch: ${escapeHTML(activeCampaign.fixedBranch)}
-                        </div>
-                    </div>`
+                ? ''
                 : `
                     <div class="mb-4 text-left">
                         <select id="branchSelect" class="w-full border border-outline rounded-xl px-4 py-3 font-bold text-sm outline-none bg-surface focus:border-primary focus:ring-1 focus:ring-primary transition-all">
@@ -909,7 +915,6 @@ function render(view = 'default') {
                             <option value="Pimple Saudagar">Pimple Saudagar</option>
                             <option value="Wadgaon Sheri">Wadgaon Sheri</option>
                             <option value="Wakad">Wakad</option>
-                            <option value="PYC">PYC</option>
                             <option value="Bavdhan">Bavdhan</option>
                         </select>
                     </div>`;
