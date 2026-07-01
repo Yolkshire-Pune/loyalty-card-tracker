@@ -768,8 +768,6 @@ function render(view = 'default') {
     // --- VIEW: PROFILE ---
     else if (view === 'default' || view === 'profile') {
         const visits = parseInt(currentUser.visits) || 0;
-        const displayVisits = Math.min(Math.max(1, visits), activeCampaign.totalVisits);
-        const progress = Math.min((displayVisits / activeCampaign.totalVisits) * 100, 100);
         const firstName = escapeHTML((currentUser.name || '').split(' ')[0]);
         const g = getGreeting(firstName);
         const isCardComplete = visits >= activeCampaign.totalVisits;
@@ -780,26 +778,45 @@ function render(view = 'default') {
             : '';
         const finalRewardName = getRewardName(activeCampaign.totalVisits);
 
+        // Generate dynamic capsule progress steps
+        let capsulesHTML = '<div class="flex justify-between items-center gap-1.5 mb-8 w-full">';
+        const total = activeCampaign.totalVisits;
+        for (let i = 1; i <= total; i++) {
+            const isFilled = i <= visits;
+            const isReward = isRewardVisit(i);
+            
+            let bgClass = '';
+            let content = '';
+            
+            if (isReward) {
+                if (isFilled) {
+                    bgClass = 'bg-warning text-primary flex items-center justify-center shadow-inner';
+                    content = '<i class="fa-solid fa-gift text-[9px] gift-wiggle"></i>';
+                } else {
+                    bgClass = 'bg-warning/5 border border-warning/35 flex items-center justify-center';
+                    content = '<i class="fa-solid fa-gift text-[9px] text-warning/40"></i>';
+                }
+            } else {
+                if (isFilled) {
+                    bgClass = 'bg-primary shadow-inner';
+                } else {
+                    bgClass = 'bg-surfaceVariant bg-opacity-65 border border-outline/20';
+                }
+            }
+            
+            capsulesHTML += `<div class="flex-1 h-5 rounded-full transition-all duration-300 ${bgClass}">${content}</div>`;
+        }
+        capsulesHTML += '</div>';
+
         const profileHeader = `
             <p class="text-sm font-semibold text-primary mb-4 md:mb-3 md:text-xs">${escapeHTML(activeCampaign.title)}</p>
             <h2 class="text-xl font-bold text-gray-800 mb-1 tracking-tight leading-tight md:text-lg">${escapeHTML(g.headline)}</h2>
             <p class="text-sm text-onSurfaceVariant font-medium mb-6 md:mb-5 md:text-xs">${escapeHTML(g.tagline)}</p>
 
-            <div class="relative w-full bg-surfaceVariant h-5 rounded-full mb-6 p-1 shadow-inner">
-                <div id="pBar" class="progress-transition bg-primary h-full rounded-full" style="width: 0%"></div>
-            </div>
+            ${capsulesHTML}
 
-            <div class="flex justify-between items-center mb-8 px-2 border-b border-gray-100 pb-8 gap-4">
-                <div class="text-left leading-none flex flex-col justify-center">
-                    <div class="flex items-baseline">
-                        <span class="text-6xl font-black text-primary">${displayVisits}</span>
-                        <span class="text-xl text-onSurfaceVariant font-bold">/ ${activeCampaign.totalVisits}</span>
-                    </div>
-                    <span class="text-[10px] font-bold text-onSurfaceVariant uppercase tracking-wider mt-2.5">
-                        ${isCardComplete ? 'Card Completed! 🎉' : `Next Stamp: Visit #${visits + 1}`}
-                    </span>
-                </div>
-                <div class="grid grid-cols-2 gap-x-4 gap-y-2">
+            <div class="w-full mb-8 px-2 border-b border-gray-100 pb-8">
+                <div class="grid grid-cols-2 gap-x-5 gap-y-2.5 text-left w-full">
                     ${ProfileStat("Card ID", escapeHTML(currentUser.id))}
                     ${memberStat}
                     ${ProfileStat("Join Date", getJoinDate(currentUser))}
@@ -896,7 +913,6 @@ function render(view = 'default') {
                 <button onclick="render('history')" class="text-primary font-bold text-xs uppercase tracking-[0.2em] border-b-2 border-primary border-opacity-20 pb-1 mx-auto block">Visit History</button>
             `;
         }
-        setTimeout(() => { const bar = document.getElementById('pBar'); if (bar) bar.style.width = progress + '%'; }, 200);
     }
     // --- VIEW: HISTORY ---
     else if (view === 'history') {
