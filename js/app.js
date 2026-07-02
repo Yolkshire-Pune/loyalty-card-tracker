@@ -80,6 +80,11 @@ let currentUser = null;
 let registering = false;
 let _dialogOnCancel = null;
 
+// --- VERIFICATION MODE CONFIGURATION ---
+// Set to true to verify real phone numbers for free via a WhatsApp pre-filled message.
+// When enabled, it bypasses the paid Firebase SMS OTP verification.
+const ENABLE_WHATSAPP_VERIFICATION = true;
+
 // --- FIREBASE CONFIGURATION (FOR PHONE NUMBER VERIFICATION) ---
 // Set your Firebase Web App configuration credentials below to enable automated SMS OTP verification.
 // Leave the fields empty to run without phone number verification.
@@ -92,7 +97,7 @@ const FIREBASE_CONFIG = {
     appId: "1:837492183538:web:69f8044f4ebc1412439b6b"
 };
 
-const ENABLE_PHONE_VERIFICATION = Boolean(FIREBASE_CONFIG.apiKey);
+const ENABLE_PHONE_VERIFICATION = ENABLE_WHATSAPP_VERIFICATION ? false : Boolean(FIREBASE_CONFIG.apiKey);
 let confirmationResultObj = null;
 
 if (ENABLE_PHONE_VERIFICATION) {
@@ -768,7 +773,14 @@ function render(view = 'default') {
                     <i class="fa-solid fa-chevron-down absolute right-4 top-4 text-gray-400 pointer-events-none"></i>
                 </div>
             </div>`;
-        const buttonLabel = ENABLE_PHONE_VERIFICATION ? "Verify Phone & Activate" : "Complete Activation";
+        const buttonLabel = ENABLE_WHATSAPP_VERIFICATION 
+            ? "Verify via WhatsApp" 
+            : (ENABLE_PHONE_VERIFICATION ? "Verify Phone & Activate" : "Complete Activation");
+            
+        const helperText = ENABLE_WHATSAPP_VERIFICATION 
+            ? `<p class="text-xs text-gray-500 mt-4 font-semibold text-center leading-relaxed"><i class="fa-brands fa-whatsapp text-green-600 mr-1 text-sm"></i> We will verify your phone number via a free WhatsApp message.</p>` 
+            : '';
+
         container.innerHTML = `
             <h2 class="text-xl font-semibold text-primary mb-2">Join Yolkshire's</h2>
             <p class="text-primary font-semibold mb-6">${escapeHTML(activeCampaign.title.replace("Yolkshire's ", ""))}</p>
@@ -779,8 +791,12 @@ function render(view = 'default') {
             <div id="otp-area" class="hidden mt-4 text-left">
                 <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">SMS OTP Verification Code</label>
                 <input type="tel" id="otpCode" placeholder="Enter 6-digit OTP" class="w-full border border-outline rounded-xl px-4 py-3.5 font-bold text-sm text-gray-800 outline-none focus:border-primary focus:ring-1 focus:ring-primary appearance-none bg-white transition-all">
+                <div class="mt-2 text-right">
+                    <button type="button" onclick="cancelOTP()" class="text-xs text-primary font-bold hover:underline">Change Number / Resend</button>
+                </div>
             </div>
             <div id="recaptcha-container" class="mt-4 flex justify-center"></div>
+            ${helperText}
             <div class="mt-8">${PrimaryButton(buttonLabel, "handleRegistration()")}</div>
         `;
     }
@@ -793,6 +809,29 @@ function render(view = 'default') {
                 <p class="text-sm text-gray-500 mb-3 font-medium">Your loyalty card #${escapeHTML(currentUser.id)} is now active.</p>
                 <p class="text-sm font-semibold text-primary mb-10">${escapeHTML(activeCampaign.title)}</p>
                 ${PrimaryButton("Go to Profile", "location.reload()")}
+            </div>
+        `;
+    }
+    // --- VIEW: WHATSAPP VERIFY ---
+    else if (view === 'whatsapp_verify') {
+        const name = currentUser ? currentUser.name : '';
+        const waMessage = `Hello Yolkshire, please verify my loyalty card #${cardId}. My registered name is ${name}.`;
+        const waUrl = `https://wa.me/${BUSINESS_WHATSAPP.replace(/\D/g, '')}?text=${encodeURIComponent(waMessage)}`;
+        
+        container.innerHTML = `
+            <div class="py-6">
+                <div class="w-16 h-16 bg-[#25D366]/10 text-[#25D366] rounded-full flex items-center justify-center mx-auto mb-6 text-3xl">
+                    <i class="fa-brands fa-whatsapp"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-800 mb-3 tracking-tight">Verify via WhatsApp</h2>
+                <p class="text-sm text-gray-600 mb-8 font-medium leading-relaxed px-2 text-left">
+                    To complete activation, click the button below to send a pre-filled verification message to our business WhatsApp.
+                    <br><br>
+                    <strong>Your card will be active instantly after you open WhatsApp.</strong>
+                </p>
+                <a href="${waUrl}" target="_blank" rel="noopener" onclick="render('success')" class="w-full bg-[#25D366] hover:bg-[#20ba5a] text-white rounded-full py-4 px-6 font-bold text-sm uppercase tracking-wider block text-center active:scale-95 transition-transform animate-bounce">
+                    <i class="fa-brands fa-whatsapp text-lg mr-2"></i> Open WhatsApp & Activate
+                </a>
             </div>
         `;
     }
@@ -982,6 +1021,33 @@ function render(view = 'default') {
             ${SecondaryButton("Back to Profile", "render('profile')")}
         `;
     }
+function cancelOTP() {
+    confirmationResultObj = null;
+    
+    // Hide OTP area and clear input
+    const otpArea = document.getElementById('otp-area');
+    if (otpArea) otpArea.classList.add('hidden');
+    const otpInput = document.getElementById('otpCode');
+    if (otpInput) otpInput.value = '';
+    
+    // Re-enable registration fields
+    const nameInput = document.getElementById('regName');
+    if (nameInput) nameInput.disabled = false;
+    const isdSelect = document.getElementById('isd');
+    if (isdSelect) isdSelect.disabled = false;
+    const phoneInput = document.getElementById('regPhone');
+    if (phoneInput) phoneInput.disabled = false;
+    const memberIdInput = document.getElementById('regMemberId');
+    if (memberIdInput) memberIdInput.disabled = false;
+    const branchSelect = document.getElementById('regBranch');
+    if (branchSelect) branchSelect.disabled = false;
+    
+    // Reset button
+    const btn = document.getElementById('handleRegistrationBtn');
+    if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = ENABLE_PHONE_VERIFICATION ? "Verify Phone & Activate" : (ENABLE_WHATSAPP_VERIFICATION ? "Verify via WhatsApp" : "Complete Activation");
+    }
 }
 
 async function handleRegistration() {
@@ -997,7 +1063,12 @@ async function handleRegistration() {
         : '';
     const resetButton = () => {
         registering = false;
-        if (btn) { btn.disabled = false; btn.innerHTML = "Complete Activation"; }
+        if (btn) { 
+            btn.disabled = false; 
+            btn.innerHTML = ENABLE_PHONE_VERIFICATION 
+                ? "Verify Phone & Activate" 
+                : (ENABLE_WHATSAPP_VERIFICATION ? "Verify via WhatsApp" : "Complete Activation"); 
+        }
     };
 
     if (!branchName) return showDialog("Select Branch", "Please select the collection branch.");
@@ -1039,6 +1110,9 @@ async function handleRegistration() {
                     'size': 'invisible'
                 });
             }
+            if (window.recaptchaWidgetId === undefined) {
+                window.recaptchaWidgetId = await window.recaptchaVerifier.render();
+            }
 
             const confirmationResult = await firebase.auth().signInWithPhoneNumber(fullPhone, window.recaptchaVerifier);
             confirmationResultObj = confirmationResult;
@@ -1061,7 +1135,33 @@ async function handleRegistration() {
         } catch (err) {
             resetButton();
             console.error("SMS OTP Send Failed:", err);
-            showDialog("OTP Failed", "Failed to send verification SMS. Please check the number and try again.");
+            
+            // Reset reCAPTCHA so they can retry
+            if (typeof grecaptcha !== 'undefined' && window.recaptchaWidgetId !== undefined) {
+                try {
+                    grecaptcha.reset(window.recaptchaWidgetId);
+                } catch (recaptchaErr) {
+                    console.error("Failed to reset reCAPTCHA:", recaptchaErr);
+                }
+            }
+
+            let errorMessage = "Failed to send verification SMS. Please check the number and try again.";
+            if (err.code) {
+                if (err.code === 'auth/unauthorized-domain') {
+                    errorMessage = "This domain is not authorized in your Firebase Console. Please add this domain under Firebase Authentication -> Settings -> Authorized Domains.";
+                } else if (err.code === 'auth/invalid-phone-number') {
+                    errorMessage = "The phone number format is invalid. Please make sure the number is correct.";
+                } else if (err.code === 'auth/quota-exceeded') {
+                    errorMessage = "SMS quota exceeded for this project. Please upgrade to the Blaze plan or try again later.";
+                } else if (err.code === 'auth/invalid-app-credential') {
+                    errorMessage = "Invalid app credential. This might be due to an incorrect API key, or missing SHA certificates (if on mobile).";
+                } else {
+                    errorMessage = `Failed to send verification SMS: ${err.message} (${err.code})`;
+                }
+            } else if (err.message) {
+                errorMessage = `Failed to send verification SMS: ${err.message}`;
+            }
+            showDialog("OTP Failed", errorMessage);
         }
         return;
     }
@@ -1080,7 +1180,17 @@ async function handleRegistration() {
             registering = false;
             if (btn) { btn.disabled = false; btn.innerHTML = "Verify OTP & Complete"; }
             console.error("OTP Verification Failed:", err);
-            return showDialog("Verification Failed", "The verification code entered is incorrect or expired.");
+            let errorMessage = "The verification code entered is incorrect or expired.";
+            if (err.code) {
+                if (err.code === 'auth/invalid-verification-code') {
+                    errorMessage = "The verification code entered is incorrect. Please try again.";
+                } else if (err.code === 'auth/session-expired') {
+                    errorMessage = "The verification code has expired. Please request a new OTP.";
+                } else {
+                    errorMessage = `Verification failed: ${err.message} (${err.code})`;
+                }
+            }
+            return showDialog("Verification Failed", errorMessage);
         }
     }
 
@@ -1112,7 +1222,13 @@ async function handleRegistration() {
             body: JSON.stringify(payload)
         });
 
-        render('success');
+        currentUser = { id: cardId, ...payload };
+
+        if (ENABLE_WHATSAPP_VERIFICATION) {
+            render('whatsapp_verify');
+        } else {
+            render('success');
+        }
     } catch (err) {
         resetButton();
         showError("Database connection failed. Refresh and try again.");
