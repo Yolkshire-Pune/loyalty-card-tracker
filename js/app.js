@@ -776,10 +776,6 @@ function render(view = 'default') {
         const buttonLabel = ENABLE_WHATSAPP_VERIFICATION 
             ? "Verify via WhatsApp" 
             : (ENABLE_PHONE_VERIFICATION ? "Verify Phone & Activate" : "Complete Activation");
-            
-        const helperText = ENABLE_WHATSAPP_VERIFICATION 
-            ? `<p class="text-xs text-gray-500 mt-4 font-semibold text-center leading-relaxed"><i class="fa-brands fa-whatsapp text-green-600 mr-1 text-sm"></i> We will verify your phone number via a free WhatsApp message.</p>` 
-            : '';
 
         container.innerHTML = `
             <h2 class="text-xl font-semibold text-primary mb-2">Join Yolkshire's</h2>
@@ -796,7 +792,6 @@ function render(view = 'default') {
                 </div>
             </div>
             <div id="recaptcha-container" class="mt-4 flex justify-center"></div>
-            ${helperText}
             <div class="mt-8">${PrimaryButton(buttonLabel, "handleRegistration()")}</div>
         `;
     }
