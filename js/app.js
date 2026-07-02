@@ -1021,6 +1021,8 @@ function render(view = 'default') {
             ${SecondaryButton("Back to Profile", "render('profile')")}
         `;
     }
+}
+
 function cancelOTP() {
     confirmationResultObj = null;
     
