@@ -50,7 +50,8 @@ body { overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
 }
 
 /* --- Milestone overlay: egg crack + yolk pop --- */
-#milestone { transition: opacity 0.3s ease-out; }
+#milestone { transition: opacity 0.3s ease-out; opacity: 0; pointer-events: none; }
+#milestone.milestone-active { opacity: 1; pointer-events: auto; }
 .egg-shell { width: 120px; height: 160px; position: relative; margin: 0 auto; }
 .egg-half {
     position: absolute; left: 0; width: 120px; height: 78px;

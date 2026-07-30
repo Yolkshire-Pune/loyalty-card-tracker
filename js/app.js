@@ -86,6 +86,7 @@ const activeCampaign = CAMPAIGNS[campaignParam] || CAMPAIGNS.public;
 const API_URL = activeCampaign.apiUrl;
 let currentUser = null;
 let registering = false;
+let visiting = false;
 let _dialogOnCancel = null;
 
 // --- VERIFICATION MODE CONFIGURATION ---
@@ -322,7 +323,7 @@ function getJoinDate(user) {
     try {
         let first = user.history.split('|').filter(Boolean)[0];
         const d = parseStoredDate(first);
-        if (isNaN(d)) return '—';
+        if (!d || isNaN(d)) return '—';
         return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
     } catch { return '—'; }
 }
@@ -490,8 +491,7 @@ function celebrateMilestone(rewardIdx, rewardName) {
         const title = el.querySelector('h2');
         if (title) title.textContent = `${rewardName.toUpperCase()} UNLOCKED`;
         if (label) label.textContent = `Reward ${rewardIdx}/${getRewardMilestones().length} Redeemed`;
-        el.classList.remove('hidden');
-        void el.offsetWidth;
+        void el.offsetWidth; // force reflow so fade-in transition starts
         el.classList.add('milestone-active');
         fireConfetti();
         setTimeout(fireConfetti, 900);
@@ -500,13 +500,12 @@ function celebrateMilestone(rewardIdx, rewardName) {
         const finish = () => {
             if (done) return;
             done = true;
-            el.classList.add('hidden');
-            el.classList.remove('milestone-active');
             el.removeEventListener('click', finish);
-            resolve();
+            el.classList.remove('milestone-active');
+            setTimeout(resolve, 300); // wait for fade-out transition
         };
         el.addEventListener('click', finish);
-        setTimeout(finish, 2600);
+        setTimeout(finish, 4500);
     });
 }
 
@@ -706,7 +705,7 @@ function render(view = 'default') {
             </p>
 
             <div class="flex gap-2">
-                <input type="text" id="manualCardId" placeholder="e.g., YSLC001" class="flex-1 border border-outline rounded-xl px-4 py-3.5 font-bold text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary uppercase transition-all">
+                <input type="text" id="manualCardId" placeholder="e.g., YSLC001" onkeydown="if(event.key==='Enter') handleManualId()" class="flex-1 border border-outline rounded-xl px-4 py-3.5 font-bold text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary uppercase transition-all">
                 <button onclick="handleManualId()" class="bg-primary text-white rounded-xl px-6 font-bold uppercase tracking-wider active:scale-95 transition-transform"><i class="fa-solid fa-arrow-right"></i></button>
             </div>
         `;
@@ -844,11 +843,11 @@ function render(view = 'default') {
                 </div>
                 <h2 class="text-2xl font-bold text-gray-800 mb-3 tracking-tight">Verify via WhatsApp</h2>
                 <p class="text-sm text-gray-600 mb-8 font-medium leading-relaxed px-2 text-left">
-                    To complete activation, click the button below to send a pre-filled verification message to our business WhatsApp.
+                    Your card is now active! Tap the button below to send us a quick hello on WhatsApp to complete your verification.
                     <br><br>
-                    <strong>Your card will be active instantly after you open WhatsApp.</strong>
+                    <strong>It only takes a second — and means a lot to us!</strong>
                 </p>
-                <a href="${waUrl}" target="_blank" rel="noopener" onclick="render('success')" class="w-full bg-[#25D366] hover:bg-[#20ba5a] text-white rounded-full py-4 px-6 font-bold text-sm uppercase tracking-wider block text-center active:scale-95 transition-transform animate-bounce">
+                <a href="${waUrl}" target="_blank" rel="noopener" onclick="render('success')" class="w-full bg-[#25D366] hover:bg-[#20ba5a] text-white rounded-full py-4 px-6 font-bold text-sm uppercase tracking-wider block text-center active:scale-95 transition-transform">
                     <i class="fa-brands fa-whatsapp text-lg mr-2"></i> Open WhatsApp & Activate
                 </a>
             </div>
@@ -867,7 +866,7 @@ function render(view = 'default') {
 
         const memberStat = activeCampaign.requiresMemberId
             ? ProfileStat("Member ID", escapeHTML(currentUser.member_id || '—'))
-            : ProfileStat("", "");
+            : '';
         const finalRewardName = getRewardName(activeCampaign.totalVisits);
 
         // Generate dynamic capsule progress steps
@@ -1258,10 +1257,11 @@ async function handleRegistration() {
 }
 
 async function handleVisit(currentVisits) {
+    if (visiting) return;
+    visiting = true;
     const btn = document.getElementById('handleVisitBtn');
-    if (btn && btn.disabled) return;
     if (btn) btn.disabled = true;
-    const reenable = () => { if (btn) btn.disabled = false; };
+    const reenable = () => { visiting = false; if (btn) btn.disabled = false; };
 
     const newVisitCount = currentVisits + 1;
     const pin = document.getElementById('staffPin').value;
@@ -1318,12 +1318,14 @@ async function handleVisit(currentVisits) {
     const isReward = isRewardVisit(newVisitCount);
 
     if (isReward) {
-        // Reward visit: show confetti immediately, update UI in-place immediately
-        fireConfetti();
+        // Reward visit: show the full milestone celebration overlay, then re-render
+        const rewardName = getRewardName(newVisitCount);
+        const rewardIdx = getRewardIndex(newVisitCount);
         currentUser.visits = newVisitCount;
         currentUser.last_visit = nowIso;
         currentUser.history = updatedHistory;
-        render();
+        visiting = false;
+        celebrateMilestone(rewardIdx, rewardName).then(() => render());
     } else {
         // Normal visit: show clean toast, wait 1.5s, then update UI
         ensureToastElement();
@@ -1334,6 +1336,7 @@ async function handleVisit(currentVisits) {
             currentUser.visits = newVisitCount;
             currentUser.last_visit = nowIso;
             currentUser.history = updatedHistory;
+            visiting = false;
             render();
         }, 1500);
     }

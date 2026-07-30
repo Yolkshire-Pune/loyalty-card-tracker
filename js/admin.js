@@ -119,6 +119,7 @@ function login() {
         fetchData();
     } else {
         document.getElementById('login-error').classList.remove('hidden');
+        document.getElementById('adminPin').value = '';
     }
 }
 
@@ -179,7 +180,7 @@ async function fetchData() {
     }
 
     try {
-        const campaignFilter = activeCampaign.key === 'pyc' ? '?campaign=eq.pyc' : '?campaign=neq.pyc';
+        const campaignFilter = activeCampaign.key === 'pyc' ? '?campaign=eq.pyc' : '?campaign=eq.public';
         const res = await fetch(`${API_URL}${campaignFilter}`, { headers: SUPABASE_HEADERS });
         const data = await res.json();
         allData = data.filter(row => row.id && row.id.trim() !== "");
@@ -314,6 +315,13 @@ function renderTable() {
         if (customEnd) customEnd.setHours(23, 59, 59, 999);
     }
 
+    // Pre-compute true calendar boundaries (not rolling windows)
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const daysToMonday = now.getDay() === 0 ? 6 : now.getDay() - 1;
+    const startOfThisWeek = new Date(startOfToday);
+    startOfThisWeek.setDate(startOfToday.getDate() - daysToMonday);
+    const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
     filtered = filtered.filter(u => {
         const history = extractHistoryDetails(u.history);
         let matchingVisits = history;
@@ -331,10 +339,11 @@ function renderTable() {
                     return true;
                 }
                 const diffDays = (now - v.date) / (1000 * 60 * 60 * 24);
-                if (dateFilter === 'Today' && diffDays > 1) return false;
-                if ((dateFilter === 'ThisWeek' || dateFilter === 'Last7Days') && diffDays > 7) return false;
-                if ((dateFilter === 'ThisMonth' || dateFilter === 'Last30Days') && diffDays > 30) return false;
-                if (dateFilter === 'ThisYear' && diffDays > 365) return false;
+                if (dateFilter === 'Today') return v.date >= startOfToday;
+                if (dateFilter === 'ThisWeek') return v.date >= startOfThisWeek;
+                if (dateFilter === 'Last7Days') return diffDays <= 7;
+                if (dateFilter === 'ThisMonth') return v.date >= startOfThisMonth;
+                if (dateFilter === 'Last30Days') return diffDays <= 30;
                 return true;
             });
         }
