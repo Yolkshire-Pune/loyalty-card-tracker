@@ -155,15 +155,15 @@ Security note: the current admin login is a simple client-side PIN. `PIPELINE.md
 
 ## Data Source
 
-Both customer and admin flows use SheetDB:
+Both customer and admin flows use Supabase REST API:
 
 ```js
-https://sheetdb.io/api/v1/im2qg2cit3cco
+https://tslqynxiwlndudvwihby.supabase.co/rest/v1/cards
 ```
 
-The PYC campaign uses its own SheetDB API configured as `PYC_API_URL` in `js/app.js` and `js/admin.js`.
+The database supports both public and PYC campaigns filtered by `campaign` column (`public` vs `pyc`).
 
-Expected SheetDB fields:
+Expected database fields:
 
 - `id`: card ID, for example `YSLC001`.
 - `name`: registered customer name.

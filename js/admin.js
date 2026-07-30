@@ -1,5 +1,12 @@
-const PUBLIC_API_URL = "https://sheetdb.io/api/v1/im2qg2cit3cco";
-const PYC_API_URL = "https://sheetdb.io/api/v1/u51z5e743v1jr";
+const SUPABASE_URL = "https://tslqynxiwlndudvwihby.supabase.co";
+const SUPABASE_KEY = "sb_publishable_tI0VcfTlTJkpTsXJSKh36g_Pwt_qjTo";
+const PUBLIC_API_URL = `${SUPABASE_URL}/rest/v1/cards`;
+const PYC_API_URL = `${SUPABASE_URL}/rest/v1/cards`;
+const SUPABASE_HEADERS = {
+    'apikey': SUPABASE_KEY,
+    'Authorization': `Bearer ${SUPABASE_KEY}`,
+    'Content-Type': 'application/json'
+};
 
 const CAMPAIGNS = {
     public: {
@@ -172,7 +179,8 @@ async function fetchData() {
     }
 
     try {
-        const res = await fetch(API_URL);
+        const campaignFilter = activeCampaign.key === 'pyc' ? '?campaign=eq.pyc' : '?campaign=neq.pyc';
+        const res = await fetch(`${API_URL}${campaignFilter}`, { headers: SUPABASE_HEADERS });
         const data = await res.json();
         allData = data.filter(row => row.id && row.id.trim() !== "");
         

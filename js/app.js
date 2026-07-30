@@ -1,6 +1,14 @@
 // --- CONSTANTS ---
-const PUBLIC_API_URL = "https://sheetdb.io/api/v1/im2qg2cit3cco";
-const PYC_API_URL = "https://sheetdb.io/api/v1/u51z5e743v1jr";
+const SUPABASE_URL = "https://tslqynxiwlndudvwihby.supabase.co";
+const SUPABASE_KEY = "sb_publishable_tI0VcfTlTJkpTsXJSKh36g_Pwt_qjTo";
+const PUBLIC_API_URL = `${SUPABASE_URL}/rest/v1/cards`;
+const PYC_API_URL = `${SUPABASE_URL}/rest/v1/cards`;
+const SUPABASE_HEADERS = {
+    'apikey': SUPABASE_KEY,
+    'Authorization': `Bearer ${SUPABASE_KEY}`,
+    'Content-Type': 'application/json',
+    'Prefer': 'return=representation'
+};
 const BUSINESS_WHATSAPP = '+918446536065';
 const INSTAGRAM_HANDLE = 'yolkshire';
 const BRAND_NAME = "Yolkshire's Golden Yolk Loyalty Program";
@@ -599,18 +607,31 @@ function getVisitSuccessMessage(visits) {
 
 async function init() {
     if (!cardId) return render('home');
-    if (!API_URL) return showError("PYC SheetDB API URL is not configured yet.");
+    if (!API_URL) return showError("Database API URL is not configured yet.");
     try {
-        const res = await fetch(`${API_URL}/search?id=${encodeURIComponent(cardId)}`);
+        const campaignFilter = activeCampaign.key === 'pyc' ? '&campaign=eq.pyc' : '&campaign=neq.pyc';
+        const res = await fetch(`${API_URL}?id=eq.${encodeURIComponent(cardId)}${campaignFilter}`, {
+            headers: SUPABASE_HEADERS
+        });
         const data = await res.json();
-        if (data.length === 0) return showError("Card ID not found in database.");
-        currentUser = data[0];
+        if (!Array.isArray(data) || data.length === 0) {
+            // Auto-create initial blank record if card ID is scanned for the first time
+            const newPayload = { id: cardId, name: '', phone: '', visits: 0, last_visit: '', history: '', member_id: '', campaign: activeCampaign.key };
+            await fetch(API_URL, {
+                method: 'POST',
+                headers: SUPABASE_HEADERS,
+                body: JSON.stringify(newPayload)
+            });
+            currentUser = newPayload;
+        } else {
+            currentUser = data[0];
+        }
 
         // Self-healing: normalize old records in-memory
         normalizeUserRecord(currentUser);
 
         render();
-    } catch (err) { showError("Database connection failed. Check your SheetDB setup."); }
+    } catch (err) { showError("Database connection failed. Check your Supabase setup."); }
 }
 
 function render(view = 'default') {
@@ -1088,7 +1109,7 @@ async function handleRegistration() {
         if (btn) { btn.disabled = true; btn.innerHTML = "Sending OTP..."; }
         try {
             // First check if phone number already exists to avoid sending unnecessary SMS
-            const res = await fetch(API_URL);
+            const res = await fetch(`${API_URL}?select=*`, { headers: SUPABASE_HEADERS });
             const globalUsers = await res.json();
 
             if (phoneAlreadyRegistered(globalUsers, fullPhone, cardId)) {
@@ -1196,7 +1217,7 @@ async function handleRegistration() {
     if (btn) { btn.disabled = true; btn.innerHTML = "Activating..."; }
 
     try {
-        const res = await fetch(API_URL);
+        const res = await fetch(`${API_URL}?select=*`, { headers: SUPABASE_HEADERS });
         const globalUsers = await res.json();
 
         if (phoneAlreadyRegistered(globalUsers, fullPhone, cardId)) {
@@ -1210,12 +1231,13 @@ async function handleRegistration() {
         }
 
         const todayStr = new Date().toISOString();
-        const payload = { name, phone: fullPhone, visits: 0, last_visit: todayStr, history: "" };
+        const payload = { name, phone: fullPhone, visits: 0, last_visit: todayStr, history: "", campaign: activeCampaign.key };
         if (activeCampaign.requiresMemberId) payload.member_id = memberId;
 
-        await fetch(`${API_URL}/id/${encodeURIComponent(cardId)}`, {
+        // Upsert record into Supabase
+        await fetch(`${API_URL}?id=eq.${encodeURIComponent(cardId)}`, {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
+            headers: SUPABASE_HEADERS,
             body: JSON.stringify(payload)
         });
 
@@ -1277,10 +1299,10 @@ async function handleVisit(currentVisits) {
     const logEntry = branchName ? nowIso + "@" + branchName : nowIso;
     const updatedHistory = currentUser.history ? currentUser.history + "|" + logEntry : logEntry;
 
-    // Trigger API call in the background
-    fetch(`${API_URL}/id/${encodeURIComponent(currentUser.id)}`, {
+    // Trigger API call in the background to Supabase
+    fetch(`${API_URL}?id=eq.${encodeURIComponent(currentUser.id)}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: SUPABASE_HEADERS,
         body: JSON.stringify({
             visits: newVisitCount,
             last_visit: nowIso,
