@@ -609,19 +609,22 @@ async function init() {
     if (!cardId) return render('home');
     if (!API_URL) return showError("Database API URL is not configured yet.");
     try {
-        const campaignFilter = activeCampaign.key === 'pyc' ? '&campaign=eq.pyc' : '&campaign=neq.pyc';
-        const res = await fetch(`${API_URL}?id=eq.${encodeURIComponent(cardId)}${campaignFilter}`, {
+        const res = await fetch(`${API_URL}?id=eq.${encodeURIComponent(cardId)}`, {
             headers: SUPABASE_HEADERS
         });
         const data = await res.json();
         if (!Array.isArray(data) || data.length === 0) {
             // Auto-create initial blank record if card ID is scanned for the first time
             const newPayload = { id: cardId, name: '', phone: '', visits: 0, last_visit: '', history: '', member_id: '', campaign: activeCampaign.key };
-            await fetch(API_URL, {
-                method: 'POST',
-                headers: SUPABASE_HEADERS,
-                body: JSON.stringify(newPayload)
-            });
+            try {
+                await fetch(API_URL, {
+                    method: 'POST',
+                    headers: SUPABASE_HEADERS,
+                    body: JSON.stringify(newPayload)
+                });
+            } catch (e) {
+                console.warn("Card row creation skipped or already exists:", e);
+            }
             currentUser = newPayload;
         } else {
             currentUser = data[0];
