@@ -327,25 +327,46 @@ function getJoinDate(user) {
         return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
     } catch { return '—'; }
 }
+function cleanBranch(raw) {
+    if (!raw) return null;
+    let s = String(raw).trim();
+    if (s.includes('|')) s = s.split('|')[0].trim();
+    if (s.includes('@')) {
+        const parts = s.split('@');
+        s = (parts[1] || parts[0]).trim();
+    }
+    const KNOWN = ["Kothrud", "Aundh", "Salunkhe Vihar", "Pimple Saudagar", "Wadgaon Sheri", "Wakad", "Bavdhan", "PYC"];
+    const matched = KNOWN.find(b => s.toLowerCase().includes(b.toLowerCase()) || b.toLowerCase().includes(s.toLowerCase()));
+    if (matched) return matched;
+    s = s.replace(/\d{4}-\d{2}-\d{2}T[^\s|@]+/gi, '').trim();
+    return s || null;
+}
+
 function getLastBranch(user) {
     if (activeCampaign.fixedBranch) return activeCampaign.fixedBranch;
-    if (!user || !user.history) return '—';
+    if (!user || !user.history) return cleanBranch(user?.branch) || '—';
     const logs = user.history.split('|').filter(Boolean);
-    if (logs.length === 0) return '—';
+    if (logs.length === 0) return cleanBranch(user?.branch) || '—';
     const latest = logs[logs.length - 1];
     if (latest.includes('@')) {
-        return latest.split('@')[1];
+        return cleanBranch(latest.split('@')[1]) || '—';
     }
-    return user.branch || '—';
+    return cleanBranch(user?.branch) || '—';
 }
 
 function getCardHomeBranch(user) {
     if (activeCampaign.fixedBranch) return activeCampaign.fixedBranch;
-    if (user?.branch && String(user.branch).trim() !== '') return String(user.branch).trim();
+    if (user?.branch) {
+        const b = cleanBranch(user.branch);
+        if (b) return b;
+    }
     if (user?.history) {
         const logs = user.history.split('|').filter(Boolean);
         for (const log of logs) {
-            if (log.includes('@')) return log.split('@')[1].trim();
+            if (log.includes('@')) {
+                const b = cleanBranch(log.split('@')[1]);
+                if (b) return b;
+            }
         }
     }
     return null;

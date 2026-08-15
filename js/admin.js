@@ -217,13 +217,38 @@ async function fetchData() {
     }
 }
 
+function cleanBranch(raw) {
+    if (!raw) return null;
+    let s = String(raw).trim();
+    // If it contains pipe delimiters from multi-visit history logs
+    if (s.includes('|')) s = s.split('|')[0].trim();
+    // If it contains @ delimiter
+    if (s.includes('@')) {
+        const parts = s.split('@');
+        s = (parts[1] || parts[0]).trim();
+    }
+    // Match against known branch names
+    const KNOWN = ["Kothrud", "Aundh", "Salunkhe Vihar", "Pimple Saudagar", "Wadgaon Sheri", "Wakad", "Bavdhan", "PYC"];
+    const matched = KNOWN.find(b => s.toLowerCase().includes(b.toLowerCase()) || b.toLowerCase().includes(s.toLowerCase()));
+    if (matched) return matched;
+    // Strip ISO timestamps if any
+    s = s.replace(/\d{4}-\d{2}-\d{2}T[^\s|@]+/gi, '').trim();
+    return s || null;
+}
+
 function getCardHomeBranch(user) {
     if (activeCampaign.fixedBranch) return activeCampaign.fixedBranch;
-    if (user?.branch && String(user.branch).trim() !== '') return String(user.branch).trim();
+    if (user?.branch) {
+        const b = cleanBranch(user.branch);
+        if (b) return b;
+    }
     if (user?.history) {
         const logs = user.history.split('|').filter(Boolean);
         for (const log of logs) {
-            if (log.includes('@')) return log.split('@')[1].trim();
+            if (log.includes('@')) {
+                const b = cleanBranch(log.split('@')[1]);
+                if (b) return b;
+            }
         }
     }
     return '—';
@@ -266,7 +291,7 @@ function extractHistoryDetails(historyStr) {
         let date = extractHistoryDate(log);
         let branch = activeCampaign.fixedBranch || 'Unknown';
         if (log.includes('@')) {
-            branch = log.split('@')[1];
+            branch = cleanBranch(log.split('@')[1]) || 'Unknown';
         }
         return { date: parseStoredDate(date), branch, visitNumber: index + 1 };
     }).reverse(); // newest first
