@@ -185,8 +185,13 @@ async function fetchData() {
         const data = await res.json();
         allData = data.filter(row => row.id && row.id.trim() !== "");
         
-        // Self-healing migration for backward compatibility: normalize old records in-memory
+        // Preserve and ensure home branch is assigned from registration or history
         allData.forEach(u => {
+            const homeB = getCardHomeBranch(u);
+            if (homeB && homeB !== '—') {
+                u.branch = homeB;
+            }
+
             let visits = parseInt(u.visits) || 0;
             const logs = u.history ? u.history.split('|').filter(Boolean) : [];
             if (logs.length > 0 && logs.length === visits + 1) {
@@ -199,16 +204,7 @@ async function fetchData() {
 
         allData.forEach(u => {
             const homeB = getCardHomeBranch(u);
-            if (homeB && homeB !== '—' && homeB !== 'Unassigned') allBranches.add(homeB);
-            if (u.history) {
-                const logs = u.history.split('|').filter(Boolean);
-                logs.forEach(log => {
-                    if (log.includes('@')) {
-                        const b = cleanBranch(log.split('@')[1]);
-                        if (b && b !== '—' && b !== 'Unassigned') allBranches.add(b);
-                    }
-                });
-            }
+            if (homeB && homeB !== '—') allBranches.add(homeB);
         });
 
         renderBranchChips();

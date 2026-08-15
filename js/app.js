@@ -76,7 +76,7 @@ const PHONE_RULES = {
     '+977': [10, 10],  // Nepal
 };
 // Production guard: one stamp per card per Asia/Kolkata calendar day.
-const ENABLE_DAILY_LIMIT_CHECK = false; // Set to false for testing as requested by the user.
+const ENABLE_DAILY_LIMIT_CHECK = true;
 
 // --- STATE ---
 const urlParams = new URLSearchParams(window.location.search);
@@ -291,11 +291,26 @@ function getLatestStampDate(user) {
 }
 
 function hasStampedToday(user) {
-    const latestStampDate = getLatestStampDate(user);
-    return Boolean(
-        latestStampDate &&
-        getKolkataDateKey(latestStampDate) === getKolkataDateKey(new Date())
-    );
+    const visits = parseInt(user?.visits) || 0;
+    if (visits <= 0) return false;
+    const todayKey = getKolkataDateKey(new Date());
+
+    const logs = user?.history ? user.history.split('|').filter(Boolean) : [];
+    for (const log of logs) {
+        const d = parseStoredDate(log);
+        if (d && getKolkataDateKey(d) === todayKey) {
+            return true;
+        }
+    }
+
+    if (user?.last_visit) {
+        const lv = parseStoredDate(user.last_visit);
+        if (lv && getKolkataDateKey(lv) === todayKey) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 function getLastVisitLabel(user) {
@@ -1068,6 +1083,14 @@ function render(view = 'default') {
                 <div class="mb-4 py-1.5 px-3 bg-warning bg-opacity-10 text-primary text-[10px] font-black uppercase tracking-widest border border-warning border-opacity-20 rounded-lg text-center">${nextRewardName} on next visit</div>
             ` : '';
             
+            const stampedToday = ENABLE_DAILY_LIMIT_CHECK && hasStampedToday(currentUser);
+            const dailyLimitBanner = stampedToday ? `
+                <div class="mb-4 py-2.5 px-3 bg-green-50 border border-green-200 text-green-800 rounded-xl text-xs font-bold flex items-center justify-center gap-2 text-center">
+                    <i class="fa-solid fa-circle-check text-green-600 text-sm"></i>
+                    <span>Stamp collected for today! Next stamp available tomorrow.</span>
+                </div>
+            ` : '';
+
             const branchControl = `
                 <div class="mb-4 py-2.5 px-3.5 bg-surface border border-outline/30 rounded-xl flex items-center justify-between text-left">
                     <div>
@@ -1080,10 +1103,13 @@ function render(view = 'default') {
                 </div>
             `;
 
+            const buttonLabel = stampedToday ? 'Stamp Collected For Today' : `Collect Stamp for Visit #${visits + 1}`;
+
             container.innerHTML = `
                 ${profileHeader}
                 <div class="${rewardCardClasses} rounded-3xl p-6 mb-6">
                     ${heroBanner}
+                    ${dailyLimitBanner}
                     ${branchControl}
                     <div class="flex items-center gap-2 mb-4 justify-center">
                         <label class="block text-xs font-bold text-onSurfaceVariant uppercase tracking-widest">Staff PIN</label>
@@ -1099,7 +1125,7 @@ function render(view = 'default') {
                         <input type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="4" id="staffPin" oninput="updatePinDots(this.value)" autocomplete="off" class="absolute inset-0 w-full h-full opacity-0">
                     </div>
                     ${nextRewardPill}
-                    ${PrimaryButton(`Collect Stamp for Visit #${visits + 1}`, "handleVisit(" + visits + ")")}
+                    ${PrimaryButton(buttonLabel, "handleVisit(" + visits + ")")}
                 </div>
 
                 <button onclick="render('history')" class="text-primary font-bold text-xs uppercase tracking-[0.2em] border-b-2 border-primary border-opacity-20 pb-1 mx-auto block">Visit History</button>
