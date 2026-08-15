@@ -1085,23 +1085,6 @@ function render(view = 'default') {
             `;
         }
     }
-                    <div class="relative h-14 mb-5">
-                        <div class="absolute inset-0 flex justify-center items-center gap-4 pointer-events-none bg-surface border border-outline rounded-xl">
-                            <span class="pin-dot w-4 h-4 rounded-full bg-surfaceVariant"></span>
-                            <span class="pin-dot w-4 h-4 rounded-full bg-surfaceVariant"></span>
-                            <span class="pin-dot w-4 h-4 rounded-full bg-surfaceVariant"></span>
-                            <span class="pin-dot w-4 h-4 rounded-full bg-surfaceVariant"></span>
-                        </div>
-                        <input type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="4" id="staffPin" oninput="updatePinDots(this.value)" autocomplete="off" class="absolute inset-0 w-full h-full opacity-0">
-                    </div>
-                    ${nextRewardPill}
-                    ${PrimaryButton(`Collect Stamp for Visit #${visits + 1}`, "handleVisit(" + visits + ")")}
-                </div>
-
-                <button onclick="render('history')" class="text-primary font-bold text-xs uppercase tracking-[0.2em] border-b-2 border-primary border-opacity-20 pb-1 mx-auto block">Visit History</button>
-            `;
-        }
-    }
     // --- VIEW: HISTORY ---
     else if (view === 'history') {
         const logs = currentUser.history ? currentUser.history.split('|').filter(x => x) : [];
