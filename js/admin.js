@@ -199,12 +199,13 @@ async function fetchData() {
 
         allData.forEach(u => {
             const homeB = getCardHomeBranch(u);
-            if (homeB && homeB !== '—') allBranches.add(homeB);
+            if (homeB && homeB !== '—' && homeB !== 'Unassigned') allBranches.add(homeB);
             if (u.history) {
                 const logs = u.history.split('|').filter(Boolean);
                 logs.forEach(log => {
                     if (log.includes('@')) {
-                        allBranches.add(log.split('@')[1].trim());
+                        const b = cleanBranch(log.split('@')[1]);
+                        if (b && b !== '—' && b !== 'Unassigned') allBranches.add(b);
                     }
                 });
             }
@@ -220,6 +221,7 @@ async function fetchData() {
 function cleanBranch(raw) {
     if (!raw) return null;
     let s = String(raw).trim();
+    if (s.toLowerCase() === 'unassigned' || s === '—' || s === '') return null;
     // If it contains pipe delimiters from multi-visit history logs
     if (s.includes('|')) s = s.split('|')[0].trim();
     // If it contains @ delimiter
@@ -233,6 +235,7 @@ function cleanBranch(raw) {
     if (matched) return matched;
     // Strip ISO timestamps if any
     s = s.replace(/\d{4}-\d{2}-\d{2}T[^\s|@]+/gi, '').trim();
+    if (s.toLowerCase() === 'unassigned') return null;
     return s || null;
 }
 
@@ -482,6 +485,10 @@ function renderTable() {
         const tr = document.createElement('tr');
         tr.className = 'border-b border-gray-100 transition-colors main-row block sm:table-row bg-white sm:bg-transparent rounded-2xl sm:rounded-none shadow-sm sm:shadow-none mb-4 sm:mb-0';
         tr.onclick = () => toggleRow(user.id);
+        const homeBranchDisplay = homeBranch && homeBranch !== '—' && homeBranch !== 'Unassigned'
+            ? `<span class="inline-flex items-center gap-1">${escapeHTML(homeBranch)} <i class="fa-solid fa-lock text-[9px] text-gray-400"></i></span>`
+            : `<span class="text-gray-400 font-normal">—</span>`;
+
         tr.innerHTML = `
             <td class="p-4 sm:p-4 text-gray-500 font-semibold block sm:table-cell flex justify-between items-center"><span class="sm:hidden text-[10px] font-bold text-gray-400 uppercase">Card ID</span>#${escapeHTML(user.id)}</td>
             ${memberCell}
@@ -491,7 +498,7 @@ function renderTable() {
                 <span class="sm:hidden text-[10px] font-bold text-gray-400 uppercase">Visits</span>
                 <span class="${badgeClass} px-2.5 py-1 rounded-md text-xs font-black tracking-widest">${displayVisits}/${activeCampaign.totalVisits}</span>
             </td>
-            <td class="p-4 sm:p-4 text-gray-600 block sm:table-cell flex justify-between items-center border-t border-gray-50 sm:border-none"><span class="sm:hidden text-[10px] font-bold text-gray-400 uppercase">Home Branch</span><span class="inline-flex items-center gap-1">${escapeHTML(homeBranch)} <i class="fa-solid fa-lock text-[9px] text-gray-400"></i></span></td>
+            <td class="p-4 sm:p-4 text-gray-600 block sm:table-cell flex justify-between items-center border-t border-gray-50 sm:border-none"><span class="sm:hidden text-[10px] font-bold text-gray-400 uppercase">Home Branch</span>${homeBranchDisplay}</td>
             <td class="p-4 sm:p-4 text-gray-600 block sm:table-cell flex justify-between items-center border-t border-gray-50 sm:border-none"><span class="sm:hidden text-[10px] font-bold text-gray-400 uppercase">Last Visit</span>${escapeHTML(formatDateTime(user.last_visit))}</td>
             <td class="p-4 sm:p-4 text-gray-400 sm:text-right block sm:table-cell flex justify-center border-t border-gray-50 sm:border-none cursor-pointer hover:bg-gray-50 rounded-b-2xl sm:rounded-none">
                 <span class="sm:hidden text-xs font-bold mr-2">History</span> <i class="fa-solid fa-chevron-${isExpanded ? 'up' : 'down'}"></i>
