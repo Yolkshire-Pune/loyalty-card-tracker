@@ -21,22 +21,30 @@ ON public.cards (branch);
 CREATE INDEX IF NOT EXISTS idx_cards_campaign 
 ON public.cards (campaign);
 
-CREATE INDEX IF NOT EXISTS idx_cards_last_visit 
-ON public.cards (last_visit DESC);
-
 -- 4. Create Master Dashboard Ingestion View: `loyalty_branch_summary`
--- Exposes live aggregated outlet performance for the Viva Foods Master Dashboard
+-- Handles `visits` as either text or integer cleanly using CTE normalization
 CREATE OR REPLACE VIEW public.loyalty_branch_summary AS
+WITH normalized_cards AS (
+    SELECT 
+        id,
+        COALESCE(NULLIF(TRIM(branch), ''), 'Unassigned') AS branch,
+        campaign,
+        name,
+        phone,
+        COALESCE(NULLIF(regexp_replace(visits::text, '[^0-9]', '', 'g'), '')::integer, 0) AS visit_count,
+        last_visit
+    FROM public.cards
+    WHERE name IS NOT NULL AND TRIM(name) != ''
+)
 SELECT 
-    COALESCE(NULLIF(branch, ''), 'Unassigned') AS branch,
+    branch,
     campaign,
     COUNT(*) AS total_registered_cards,
-    COUNT(*) FILTER (WHERE visits > 0 AND visits < CASE WHEN campaign = 'pyc' THEN 10 ELSE 9 END) AS active_cards,
-    COUNT(*) FILTER (WHERE visits >= CASE WHEN campaign = 'pyc' THEN 10 ELSE 9 END) AS completed_cards,
-    ROUND(AVG(LEAST(visits, CASE WHEN campaign = 'pyc' THEN 10 ELSE 9 END))::numeric, 2) AS avg_stamps_per_card,
+    COUNT(*) FILTER (WHERE visit_count > 0 AND visit_count < CASE WHEN campaign = 'pyc' THEN 10 ELSE 9 END) AS active_cards,
+    COUNT(*) FILTER (WHERE visit_count >= CASE WHEN campaign = 'pyc' THEN 10 ELSE 9 END) AS completed_cards,
+    ROUND(AVG(LEAST(visit_count, CASE WHEN campaign = 'pyc' THEN 10 ELSE 9 END))::numeric, 2) AS avg_stamps_per_card,
     MAX(last_visit) AS latest_activity_at
-FROM public.cards
-WHERE name IS NOT NULL AND name != ''
+FROM normalized_cards
 GROUP BY branch, campaign
 ORDER BY branch ASC, campaign ASC;
 
