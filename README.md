@@ -10,72 +10,25 @@ The tracker lets customers activate a physical loyalty card by scanning its QR c
 - A stamp can be earned only when the bill value is ₹200 or more.
 - Only one visit/stamp can be marked per card per day.
 - One phone number can be registered with only one loyalty card.
-- Customers can complete their 9 visits at any Yolkshire branch.
-- After 9 visits, the card is complete and no more visits should be marked on that card.
+- **Single-Branch Lock**: Members can only collect stamps and redeem rewards at their registered Home Branch.
+- After 9 visits (public) or 10 visits (PYC), the card is complete and no more visits should be marked on that card.
 - The original physical card is required for stamping.
 - Lost physical cards cannot be replaced with recovered stamps.
-- The offer is valid until 31 December 2026.
+- The offer is valid until 31 December 2026 (Dine-in only, not valid on delivery/takeaway).
 
-## PYC Member Variant
+## Terms And Conditions Modal
 
-The same app supports a member-exclusive PYC campaign when opened with:
+Terms and Conditions are built directly into the web application:
+- Accessible via the `(i)` floating icon on the Customer Profile.
+- Accessible via the "View Terms & Conditions" trigger on the Card Lookup and Registration pages.
+- Dynamic campaign support (Public 9-visit terms vs. PYC Gymkhana 10-visit terms).
 
-```text
-index.html?campaign=pyc&id=PYC001
-```
+## Master Dashboard Feed API
 
-Existing public QR links such as `index.html?id=YSLC001` continue to use the public campaign.
-
-PYC campaign rules:
-
-- 10 visits per card.
-- Fixed branch: `PYC`; no branch dropdown is shown.
-- Visit 5 reward: Free Drink/Dessert.
-- Visit 10 reward: Free Dish.
-- A PYC member ID is required during activation.
-- Member ID formats:
-  - Club/permanent members: `{Letter}-{4 digits}`, for example `B-0251` or `S-0072`.
-  - Departmental/gym members: `DM{4 digits}`, for example `DM1234` or `DM0067`.
-- Member IDs are normalized to uppercase and checked for uniqueness within the PYC SheetDB source.
-
-PYC admin dashboard:
-
-```text
-admin.html?campaign=pyc
-```
-
-The PYC dashboard reads from the separate PYC SheetDB API, shows PYC records only, includes member ID search/display, uses 10-visit completion, and hides branch filtering.
-
-## Staff Instructions
-
-1. Give the loyalty card to the customer.
-2. Ask the customer to scan the QR code and register the card with their name and phone number.
-3. On every visit after registration, either the customer or staff can scan the card QR code.
-4. Staff must enter the staff PIN (`2010`) to mark the visit.
-5. After marking the visit online, staff should also sign/stamp the physical card. This is not mandatory but recommended.
-6. Mark a visit only when the bill value is ₹200 or more.
-7. Only one visit can be marked per day. The system will not allow more than one visit on the same day.
-8. The customer can complete their 9 visits at any Yolkshire branch.
-9. After 9 visits, the card is complete. No more visits can be marked on that card.
-10. One phone number can be registered with only one loyalty card. The system will not allow the same phone number to be used again.
-11. If the card is lost, we cannot replace the stamps or recover the physical card.
-12. Always check that the visit is successfully updated on the phone before signing/stamping the card.
-13. Do not mark visits before billing is completed.
-14. Do not share the staff PIN with customers.
-15. If the QR code does not work, the card is damaged, or the system shows an error, inform the manager before marking anything manually.
-
-## Terms And Conditions
-
-These terms should be shown in the tracker later, especially on the card lookup, activation, and visit pages.
-
-- Minimum order of ₹200 to earn a stamp.
-- Card is non-transferable.
-- Not valid on delivery or takeaway.
-- One card per person during the offer period.
-- Original physical card required for stamping.
-- Valid until 31st December 2026.
-
-Implementation note: `PIPELINE.md` already tracks Terms & Conditions integration as a future feature. Add these terms to the in-app modal/toggle when that work is implemented.
+The loyalty engine exposes real-time and aggregated data feeds for external Master Dashboards (e.g., Viva Foods BI):
+- **Aggregated Branch KPI Feed**: `GET https://tslqynxiwlndudvwihby.supabase.co/rest/v1/loyalty_branch_summary`
+- **Transactional Ledger Feed**: `GET https://tslqynxiwlndudvwihby.supabase.co/rest/v1/cards?select=*`
+- Database schema setup script is located in `supabase_master_api.sql`.
 
 ## App Flow
 

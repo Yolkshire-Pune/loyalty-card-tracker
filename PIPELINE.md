@@ -4,57 +4,42 @@ This document tracks upcoming features and enhancements for the Yolkshire Loyalt
 
 ## 🛠️ UI/UX Enhancements
 
-### 1. Final Milestone Styling
+### 1. Final Milestone Styling ✅ Completed
 
-- **Task:** Increase text size for the "Yayy, you're a certified Eggomaniac now" line on the completion screen.
-- **Goal:** Make the celebration feel more prominent and rewarding.
+- **Status:** Completion screen now features an enlarged bold "CERTIFIED EGGOMANIAC!" headline, trophy glow, and social feedback actions.
 
-### 2. Landing Page Prominence
+### 2. Landing Page Prominence ✅ Completed
 
-- **Task:** Make the "I am a Customer" and "I am an Admin" choice buttons more prominent.
-- **Task:** Add an icon inside the circle for the Admin button (similar to the user icon for the Customer button).
+- **Status:** Prominent dual role-selection cards with high elevation, dedicated icons (user & shield), and direct routing.
 
 ### 3. Date & Time Formatting ✅ Completed
 
-- **Status:** Customer profile and Admin "Last Visit" now format ISO timestamps as readable India-local date/time.
-- **Format:** `5 Jun 2026, 9:57 pm`.
-- **Note:** Visit history was already displaying correctly; the main Admin row and customer profile have now been aligned.
+- **Status:** Customer profile and Admin "Last Visit" format ISO timestamps as readable India-local date/time (`5 Jun 2026, 9:57 pm`).
 
-### 4. Terms & Conditions Integration
+### 4. Terms & Conditions Integration ✅ Completed
 
-- **Task:** Add a TnC toggle/modal in two places:
-  - "Find your Card" page.
-  - "Activate Card" page.
-- **Task:** Add an info (`i`) icon on the visit pages that opens the same Terms & Conditions.
+- **Status:** Accessible modal drawer implemented on customer profile (`(i)` trigger), card lookup, and activation screens.
+
+### 5. Single-Branch Membership Locking ✅ Completed
+
+- **Status:** Registered cards are permanently locked to their home branch; stamping validates branch match and blocks cross-branch usage.
 
 ## 🔒 Security & Data Integrity
 
-### 5. Advanced Authentication & Authorization
+### 6. Escape Admin Dashboard Data ✅ Completed
+
+- **Status:** Full XSS sanitization implemented via `escapeHTML()` on all dynamic customer table fields.
+
+### 7. Advanced Authentication & Authorization
 
 - **Description:** Replace the simple PIN-based login (`2010`) with a robust, secure authentication system.
 - **Details:**
   - Unique admin accounts with individual passwords.
   - Role-based access control (Staff vs. Manager views).
 
-### 6. Verify and Strengthen Duplicate Phone Check ✅ Completed
+### 8. Verify and Strengthen Duplicate Phone Check ✅ Completed
 
-- **Description:** Ensure that no two cards can be registered with the same phone number.
-- **Status:** Registration now compares canonical phone numbers across all SheetDB rows.
-- **Covered Cases:**
-  - `+919876543210`
-  - `919876543210`
-  - `+91 98765 43210`
-  - formatted/punctuated phone numbers.
-- **Remaining Risk:** This is still client-side validation. Two simultaneous registrations could theoretically bypass it until uniqueness is enforced through a backend or database-level rule.
-
-### 7. Escape Admin Dashboard Data
-
-- **Description:** The Admin Dashboard renders SheetDB values into `innerHTML`.
-- **Why It Matters:** Names, phones, branches, and IDs should be escaped before rendering to prevent broken layout or accidental HTML injection from spreadsheet data.
-- **Action:**
-  - Add/reuse an `escapeHTML` helper in `js/admin.js`.
-  - Escape customer name, phone, card ID, branch, last visit, and history fields before inserting them into table rows/cards.
-  - Keep numeric KPIs as parsed numbers, not raw strings.
+- **Status:** Registration compares canonical E.164 phone numbers across all records.
 
 ### 8. Fix New Card Visit Count Display
 

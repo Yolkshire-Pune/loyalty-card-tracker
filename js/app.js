@@ -336,7 +336,62 @@ function getLastBranch(user) {
     if (latest.includes('@')) {
         return latest.split('@')[1];
     }
-    return '—';
+    return user.branch || '—';
+}
+
+function getCardHomeBranch(user) {
+    if (activeCampaign.fixedBranch) return activeCampaign.fixedBranch;
+    if (user?.branch && String(user.branch).trim() !== '') return String(user.branch).trim();
+    if (user?.history) {
+        const logs = user.history.split('|').filter(Boolean);
+        for (const log of logs) {
+            if (log.includes('@')) return log.split('@')[1].trim();
+        }
+    }
+    return null;
+}
+
+function getTnCHTML() {
+    if (activeCampaign.key === 'pyc') {
+        return `
+            <div class="space-y-2.5">
+                <div class="flex items-start gap-2"><i class="fa-solid fa-circle-check text-primary mt-0.5"></i> <span>Minimum order of <strong>₹200</strong> required to earn a visit stamp.</span></div>
+                <div class="flex items-start gap-2"><i class="fa-solid fa-circle-check text-primary mt-0.5"></i> <span>Only <strong>one visit / stamp</strong> can be marked per card per calendar day.</span></div>
+                <div class="flex items-start gap-2"><i class="fa-solid fa-circle-check text-primary mt-0.5"></i> <span>Valid <strong>PYC Member ID</strong> required during card activation.</span></div>
+                <div class="flex items-start gap-2"><i class="fa-solid fa-circle-check text-primary mt-0.5"></i> <span>Valid exclusively at <strong>PYC Gymkhana</strong> until <strong>31 December 2026</strong>.</span></div>
+                <div class="flex items-start gap-2"><i class="fa-solid fa-circle-check text-primary mt-0.5"></i> <span>Original physical card required for stamping. Lost cards cannot be replaced with recovered stamps.</span></div>
+            </div>
+        `;
+    }
+    return `
+        <div class="space-y-2.5">
+            <div class="flex items-start gap-2"><i class="fa-solid fa-circle-check text-primary mt-0.5"></i> <span>Minimum order of <strong>₹200</strong> required to earn a visit stamp.</span></div>
+            <div class="flex items-start gap-2"><i class="fa-solid fa-circle-check text-primary mt-0.5"></i> <span>Only <strong>one visit / stamp</strong> can be marked per card per calendar day.</span></div>
+            <div class="flex items-start gap-2"><i class="fa-solid fa-circle-check text-primary mt-0.5"></i> <span><strong>Single-Branch Policy:</strong> Membership stamps & rewards are strictly valid only at your <strong>registered Home Branch</strong>.</span></div>
+            <div class="flex items-start gap-2"><i class="fa-solid fa-circle-check text-primary mt-0.5"></i> <span>One phone number can be registered with only <strong>one loyalty card</strong>.</span></div>
+            <div class="flex items-start gap-2"><i class="fa-solid fa-circle-check text-primary mt-0.5"></i> <span>Valid until <strong>31 December 2026</strong> (Dine-in only, not valid on delivery/takeaway).</span></div>
+            <div class="flex items-start gap-2"><i class="fa-solid fa-circle-check text-primary mt-0.5"></i> <span>Original physical card required for stamping. Lost cards cannot be replaced with recovered stamps.</span></div>
+        </div>
+    `;
+}
+
+function openTnCModal() {
+    const modal = document.getElementById('tnc-modal');
+    const content = document.getElementById('tnc-content');
+    if (content) content.innerHTML = getTnCHTML();
+    if (modal) {
+        modal.classList.remove('hidden');
+        void modal.offsetWidth;
+        modal.classList.add('dialog-open');
+    }
+}
+
+function closeTnCModal() {
+    const modal = document.getElementById('tnc-modal');
+    if (modal) {
+        modal.classList.remove('dialog-open');
+        setTimeout(() => modal.classList.add('hidden'), 300);
+    }
 }
 function groupLogsByMonth(logs) {
     const parsed = [];
@@ -704,10 +759,14 @@ function render(view = 'default') {
                 Alternatively, enter the 7-character ID printed below your QR code here:
             </p>
 
-            <div class="flex gap-2">
+            <div class="flex gap-2 mb-6">
                 <input type="text" id="manualCardId" placeholder="e.g., YSLC001" onkeydown="if(event.key==='Enter') handleManualId()" class="flex-1 border border-outline rounded-xl px-4 py-3.5 font-bold text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary uppercase transition-all">
                 <button onclick="handleManualId()" class="bg-primary text-white rounded-xl px-6 font-bold uppercase tracking-wider active:scale-95 transition-transform"><i class="fa-solid fa-arrow-right"></i></button>
             </div>
+
+            <button type="button" onclick="openTnCModal()" class="text-xs text-primary font-bold hover:underline inline-flex items-center gap-1.5 mx-auto">
+                <i class="fa-solid fa-shield-halved text-warning"></i> View Terms & Conditions
+            </button>
         `;
     }
     // --- VIEW: SCAN (Initial) ---
@@ -774,17 +833,18 @@ function render(view = 'default') {
         const branchHTML = activeCampaign.fixedBranch
             ? `
             <div class="mt-4 text-left">
-                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">Collection Branch</label>
-                <div class="w-full border-2 border-gray-100 rounded-xl px-4 py-3.5 font-bold text-sm text-gray-800 bg-gray-50">
-                    ${escapeHTML(activeCampaign.fixedBranch)}
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">Home Branch (Fixed)</label>
+                <div class="w-full border-2 border-gray-100 rounded-xl px-4 py-3.5 font-bold text-sm text-gray-800 bg-gray-50 flex items-center justify-between">
+                    <span>${escapeHTML(activeCampaign.fixedBranch)}</span>
+                    <i class="fa-solid fa-lock text-gray-400 text-xs"></i>
                 </div>
             </div>`
             : `
             <div class="mt-4 text-left">
-                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">Collection Branch</label>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">Select Home Branch</label>
                 <div class="relative">
                     <select id="regBranch" class="w-full border-2 border-gray-200 rounded-xl px-4 py-3.5 font-bold text-sm text-gray-800 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 appearance-none bg-white transition-all">
-                        <option value="" disabled selected>Select Branch...</option>
+                        <option value="" disabled selected>Select Your Branch...</option>
                         <option value="Kothrud">Kothrud</option>
                         <option value="Aundh">Aundh</option>
                         <option value="Salunkhe Vihar">Salunkhe Vihar</option>
@@ -795,6 +855,10 @@ function render(view = 'default') {
                     </select>
                     <i class="fa-solid fa-chevron-down absolute right-4 top-4 text-gray-400 pointer-events-none"></i>
                 </div>
+                <p class="text-[11px] text-amber-800 font-semibold mt-2 flex items-start gap-1.5 bg-amber-50 p-2.5 rounded-xl border border-amber-200 leading-tight">
+                    <i class="fa-solid fa-lock text-xs mt-0.5 text-amber-600"></i>
+                    <span><strong>Branch Policy:</strong> Stamps & rewards can only be collected at your selected home branch.</span>
+                </p>
             </div>`;
         const buttonLabel = ENABLE_WHATSAPP_VERIFICATION 
             ? "Verify via WhatsApp" 
@@ -816,6 +880,9 @@ function render(view = 'default') {
             </div>
             <div id="recaptcha-container" class="mt-4 flex justify-center"></div>
             <div class="mt-8">${PrimaryButton(buttonLabel, "handleRegistration()")}</div>
+            <button type="button" onclick="openTnCModal()" class="text-xs text-primary font-bold hover:underline inline-flex items-center gap-1.5 mx-auto mt-2">
+                <i class="fa-solid fa-shield-halved text-warning"></i> View Terms & Conditions
+            </button>
         `;
     }
     // --- VIEW: SUCCESS ---
@@ -859,6 +926,7 @@ function render(view = 'default') {
         const firstName = escapeHTML((currentUser.name || '').split(' ')[0]);
         const g = getGreeting(firstName);
         const isCardComplete = visits >= activeCampaign.totalVisits;
+        const homeBranch = getCardHomeBranch(currentUser);
         
         const nextVisitNumber = visits + 1;
         const isRewardEarned = !isCardComplete && isRewardVisit(nextVisitNumber);
@@ -870,7 +938,7 @@ function render(view = 'default') {
         const finalRewardName = getRewardName(activeCampaign.totalVisits);
 
         // Generate dynamic capsule progress steps
-        let capsulesHTML = '<div class="flex justify-between items-center gap-1.5 mb-8 w-full">';
+        let capsulesHTML = '<div class="flex justify-between items-center gap-1.5 mb-8 w-full" role="progressbar" aria-valuenow="' + visits + '" aria-valuemin="0" aria-valuemax="' + activeCampaign.totalVisits + '" aria-label="Stamp Progress">';
         const total = activeCampaign.totalVisits;
         for (let i = 1; i <= total; i++) {
             const isFilled = i <= visits;
@@ -902,7 +970,12 @@ function render(view = 'default') {
         capsulesHTML += '</div>';
 
         const profileHeader = `
-            <p class="text-sm font-semibold text-primary mb-4 md:mb-3 md:text-xs">${escapeHTML(activeCampaign.title)}</p>
+            <div class="flex justify-between items-center mb-4 md:mb-3">
+                <p class="text-sm font-semibold text-primary md:text-xs">${escapeHTML(activeCampaign.title)}</p>
+                <button onclick="openTnCModal()" class="w-6 h-6 rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-white flex items-center justify-center text-xs transition-colors" title="Terms & Conditions" aria-label="View Terms">
+                    <i class="fa-solid fa-info text-[10px]"></i>
+                </button>
+            </div>
             <h2 class="text-xl font-bold text-gray-800 mb-1 tracking-tight leading-tight md:text-lg">${escapeHTML(g.headline)}</h2>
             <p class="text-sm text-onSurfaceVariant font-medium mb-6 md:mb-5 md:text-xs">${escapeHTML(g.tagline)}</p>
 
@@ -913,7 +986,7 @@ function render(view = 'default') {
                 <div class="grid grid-cols-2 gap-x-5 gap-y-2.5 text-left w-full">
                     ${ProfileStat("Card ID", escapeHTML(currentUser.id))}
                     ${memberStat}
-                    ${ProfileStat("Branch", getLastBranch(currentUser))}
+                    ${ProfileStat("Home Branch", escapeHTML(homeBranch || '—') + " 🔒")}
                     ${ProfileStat("Phone", escapeHTML(formatPhone(currentUser.phone)))}
                     ${ProfileStat("Join Date", getJoinDate(currentUser))}
                     ${ProfileStat(isCardComplete ? "Completed Date" : "Last Visit", escapeHTML(getLastVisitLabel(currentUser)))}
@@ -921,6 +994,7 @@ function render(view = 'default') {
                 ` : `
                 <div class="grid grid-cols-2 gap-x-5 gap-y-2.5 text-left w-full">
                     ${ProfileStat("Card ID", escapeHTML(currentUser.id))}
+                    ${ProfileStat("Home Branch", escapeHTML(homeBranch || '—') + " 🔒")}
                     ${ProfileStat("Phone", escapeHTML(formatPhone(currentUser.phone)))}
                     ${ProfileStat("Join Date", getJoinDate(currentUser))}
                     ${ProfileStat(isCardComplete ? "Completed Date" : "Last Visit", escapeHTML(getLastVisitLabel(currentUser)))}
@@ -932,16 +1006,19 @@ function render(view = 'default') {
         if (isCardComplete) {
             container.innerHTML = `
                 ${profileHeader}
-                <div class="bg-gradient-to-br from-warning/25 to-warning/5 border-2 border-warning reward-glow rounded-3xl p-6 mb-6 text-center">
+                <div class="bg-gradient-to-br from-warning/30 to-warning/10 border-2 border-warning reward-glow rounded-3xl p-6 mb-6 text-center shadow-lg">
                     <i class="fa-solid fa-trophy text-warning text-5xl mb-3 gift-wiggle"></i>
-                    <p class="text-sm text-onSurface font-bold mb-2">Yayy, you're a certified Eggomaniac now</p>
-                    <p class="text-sm text-onSurface font-medium mb-4">
-                        You've collected all ${activeCampaign.totalVisits} stamps and earned a ${finalRewardName}. Thank you for being part of ${escapeHTML(activeCampaign.title)}!
+                    <h3 class="text-xl font-black text-primary tracking-tight uppercase mb-2">CERTIFIED EGGOMANIAC!</h3>
+                    <p class="text-sm text-onSurface font-bold mb-3">
+                        You've collected all ${activeCampaign.totalVisits} stamps and earned a ${finalRewardName} at ${escapeHTML(homeBranch || 'Yolkshire')}!
                     </p>
-                    <p class="text-sm text-onSurfaceVariant font-medium">
+                    <p class="text-xs text-onSurfaceVariant font-medium mb-4">
+                        Thank you for being a loyal Golden Yolk member.
+                    </p>
+                    <p class="text-xs text-onSurfaceVariant font-medium">
                         Follow us on Instagram
                         <a href="https://instagram.com/${INSTAGRAM_HANDLE}" target="_blank" rel="noopener" class="text-primary font-bold"><i class="fa-brands fa-instagram"></i> @${INSTAGRAM_HANDLE}</a>
-                        for new offers like this.
+                        for special member drops.
                     </p>
                 </div>
 
@@ -961,7 +1038,7 @@ function render(view = 'default') {
                 <div class="mb-5 text-center">
                     <i class="fa-solid fa-gift gift-wiggle text-warning text-5xl mb-3"></i>
                     <h3 class="text-lg font-black text-primary tracking-tight leading-tight uppercase">YOU'VE EARNED<br>A ${rewardName}</h3>
-                    <p class="text-xs text-onSurfaceVariant font-semibold mt-2">Show this screen to your server</p>
+                    <p class="text-xs text-onSurfaceVariant font-semibold mt-2">Show this screen to your server at ${escapeHTML(homeBranch || 'your branch')}</p>
                 </div>
             ` : '';
 
@@ -969,21 +1046,18 @@ function render(view = 'default') {
             const nextRewardPill = isNextReward ? `
                 <div class="mb-4 py-1.5 px-3 bg-warning bg-opacity-10 text-primary text-[10px] font-black uppercase tracking-widest border border-warning border-opacity-20 rounded-lg text-center">${nextRewardName} on next visit</div>
             ` : '';
-            const branchControl = activeCampaign.fixedBranch
-                ? ''
-                : `
-                    <div class="mb-4 text-left">
-                        <select id="branchSelect" class="w-full border border-outline rounded-xl px-4 py-3 font-bold text-sm outline-none bg-surface focus:border-primary focus:ring-1 focus:ring-primary transition-all">
-                            <option value="" disabled selected>Select Branch...</option>
-                            <option value="Kothrud">Kothrud</option>
-                            <option value="Aundh">Aundh</option>
-                            <option value="Salunkhe Vihar">Salunkhe Vihar</option>
-                            <option value="Pimple Saudagar">Pimple Saudagar</option>
-                            <option value="Wadgaon Sheri">Wadgaon Sheri</option>
-                            <option value="Wakad">Wakad</option>
-                            <option value="Bavdhan">Bavdhan</option>
-                        </select>
-                    </div>`;
+            
+            const branchControl = `
+                <div class="mb-4 py-2.5 px-3.5 bg-surface border border-outline/30 rounded-xl flex items-center justify-between text-left">
+                    <div>
+                        <p class="text-[9px] font-bold text-onSurfaceVariant uppercase tracking-widest">Locked Home Branch</p>
+                        <p class="text-xs font-black text-primary"><i class="fa-solid fa-location-dot mr-1"></i>${escapeHTML(homeBranch || 'Unassigned')}</p>
+                    </div>
+                    <span class="text-[10px] text-primary bg-primary/10 px-2 py-1 rounded-md font-bold flex items-center gap-1 border border-primary/20">
+                        <i class="fa-solid fa-lock text-[9px]"></i> Fixed
+                    </span>
+                </div>
+            `;
 
             container.innerHTML = `
                 ${profileHeader}
@@ -992,8 +1066,25 @@ function render(view = 'default') {
                     ${branchControl}
                     <div class="flex items-center gap-2 mb-4 justify-center">
                         <label class="block text-xs font-bold text-onSurfaceVariant uppercase tracking-widest">Staff PIN</label>
-                        <button onclick="showDialog('Staff Area', 'Ask your server to enter their pin to collect stamp.')" class="text-onSurfaceVariant text-xs hover:text-primary transition-colors"><i class="fa-solid fa-circle-info"></i></button>
+                        <button onclick="showDialog('Staff Area', 'Ask your server at ' + escapeHTML('${homeBranch || 'Yolkshire'}') + ' to enter their pin to collect stamp.')" class="text-onSurfaceVariant text-xs hover:text-primary transition-colors"><i class="fa-solid fa-circle-info"></i></button>
                     </div>
+                    <div class="relative h-14 mb-5">
+                        <div class="absolute inset-0 flex justify-center items-center gap-4 pointer-events-none bg-surface border border-outline rounded-xl">
+                            <span class="pin-dot w-4 h-4 rounded-full bg-surfaceVariant"></span>
+                            <span class="pin-dot w-4 h-4 rounded-full bg-surfaceVariant"></span>
+                            <span class="pin-dot w-4 h-4 rounded-full bg-surfaceVariant"></span>
+                            <span class="pin-dot w-4 h-4 rounded-full bg-surfaceVariant"></span>
+                        </div>
+                        <input type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="4" id="staffPin" oninput="updatePinDots(this.value)" autocomplete="off" class="absolute inset-0 w-full h-full opacity-0">
+                    </div>
+                    ${nextRewardPill}
+                    ${PrimaryButton(`Collect Stamp for Visit #${visits + 1}`, "handleVisit(" + visits + ")")}
+                </div>
+
+                <button onclick="render('history')" class="text-primary font-bold text-xs uppercase tracking-[0.2em] border-b-2 border-primary border-opacity-20 pb-1 mx-auto block">Visit History</button>
+            `;
+        }
+    }
                     <div class="relative h-14 mb-5">
                         <div class="absolute inset-0 flex justify-center items-center gap-4 pointer-events-none bg-surface border border-outline rounded-xl">
                             <span class="pin-dot w-4 h-4 rounded-full bg-surfaceVariant"></span>
@@ -1233,7 +1324,15 @@ async function handleRegistration() {
         }
 
         const todayStr = new Date().toISOString();
-        const payload = { name, phone: fullPhone, visits: 0, last_visit: todayStr, history: "", campaign: activeCampaign.key };
+        const payload = { 
+            name, 
+            phone: fullPhone, 
+            branch: branchName,
+            visits: 0, 
+            last_visit: todayStr, 
+            history: `${todayStr}@${branchName}`, 
+            campaign: activeCampaign.key 
+        };
         if (activeCampaign.requiresMemberId) payload.member_id = memberId;
 
         // Upsert record into Supabase
@@ -1265,12 +1364,12 @@ async function handleVisit(currentVisits) {
 
     const newVisitCount = currentVisits + 1;
     const pin = document.getElementById('staffPin').value;
-    const branchSelect = document.getElementById('branchSelect');
-    const branchName = activeCampaign.fixedBranch || (branchSelect ? branchSelect.value : '');
+    const homeBranch = getCardHomeBranch(currentUser);
+    const branchName = activeCampaign.fixedBranch || homeBranch;
 
     if (!branchName) {
         reenable();
-        return showDialog("Select Branch", "Please select a branch before entering the PIN.");
+        return showDialog("Branch Missing", "No home branch is registered for this card. Please contact manager.");
     }
 
     if (pin !== "2010") {
@@ -1307,6 +1406,7 @@ async function handleVisit(currentVisits) {
         method: 'PATCH',
         headers: SUPABASE_HEADERS,
         body: JSON.stringify({
+            branch: branchName,
             visits: newVisitCount,
             last_visit: nowIso,
             history: updatedHistory
@@ -1321,6 +1421,7 @@ async function handleVisit(currentVisits) {
         // Reward visit: show the full milestone celebration overlay, then re-render
         const rewardName = getRewardName(newVisitCount);
         const rewardIdx = getRewardIndex(newVisitCount);
+        currentUser.branch = branchName;
         currentUser.visits = newVisitCount;
         currentUser.last_visit = nowIso;
         currentUser.history = updatedHistory;
@@ -1333,6 +1434,7 @@ async function handleVisit(currentVisits) {
         
         setTimeout(() => {
             hideToast();
+            currentUser.branch = branchName;
             currentUser.visits = newVisitCount;
             currentUser.last_visit = nowIso;
             currentUser.history = updatedHistory;
@@ -1361,3 +1463,5 @@ window.render = render;
 window.handleManualId = handleManualId;
 window.handleRegistration = handleRegistration;
 window.handleVisit = handleVisit;
+window.openTnCModal = openTnCModal;
+window.closeTnCModal = closeTnCModal;

@@ -97,7 +97,7 @@ function initAdminChrome() {
             <th class="p-4">Customer Name</th>
             <th class="p-4">Phone</th>
             <th class="p-4 text-center">Visits</th>
-            <th class="p-4">Last Branch</th>
+            <th class="p-4">Home Branch</th>
             <th class="p-4">Last Visit Date</th>
             <th class="p-4"></th>
         `;
@@ -198,11 +198,13 @@ async function fetchData() {
         allBranches = new Set();
 
         allData.forEach(u => {
+            const homeB = getCardHomeBranch(u);
+            if (homeB && homeB !== '—') allBranches.add(homeB);
             if (u.history) {
                 const logs = u.history.split('|').filter(Boolean);
                 logs.forEach(log => {
                     if (log.includes('@')) {
-                        allBranches.add(log.split('@')[1]);
+                        allBranches.add(log.split('@')[1].trim());
                     }
                 });
             }
@@ -213,6 +215,18 @@ async function fetchData() {
     } catch (err) {
         document.getElementById('tableBody').innerHTML = `<tr><td colspan="${getTableColspan()}" class="p-8 text-center text-red-500 font-bold">Failed to load data.</td></tr>`;
     }
+}
+
+function getCardHomeBranch(user) {
+    if (activeCampaign.fixedBranch) return activeCampaign.fixedBranch;
+    if (user?.branch && String(user.branch).trim() !== '') return String(user.branch).trim();
+    if (user?.history) {
+        const logs = user.history.split('|').filter(Boolean);
+        for (const log of logs) {
+            if (log.includes('@')) return log.split('@')[1].trim();
+        }
+    }
+    return '—';
 }
 
 function renderBranchChips() {
@@ -324,9 +338,13 @@ function renderTable() {
 
     filtered = filtered.filter(u => {
         const history = extractHistoryDetails(u.history);
+        const homeB = getCardHomeBranch(u);
         let matchingVisits = history;
 
         if (selectedBranch !== 'All') {
+            const isHomeMatch = homeB === selectedBranch;
+            const hasVisitAtBranch = history.some(v => v.branch === selectedBranch);
+            if (!isHomeMatch && !hasVisitAtBranch) return false;
             matchingVisits = matchingVisits.filter(v => v.branch === selectedBranch);
         }
 
@@ -348,7 +366,7 @@ function renderTable() {
             });
         }
 
-        if (matchingVisits.length > 0 || (dateFilter === 'All' && selectedBranch === 'All')) {
+        if (matchingVisits.length > 0 || (dateFilter === 'All')) {
             if (dateFilter !== 'All' || selectedBranch !== 'All') {
                 totalMatchingStamps += matchingVisits.filter(v => v.visitNumber > 0).length;
             } else {
@@ -400,14 +418,13 @@ function renderTable() {
             branchContainer.classList.remove('hidden');
             const branchStats = {};
             filtered.forEach(u => {
-                const hist = extractHistoryDetails(u.history);
-                if (hist.length) {
-                    const b = hist[hist.length - 1].branch || 'Other';
-                    branchStats[b] = (branchStats[b] || 0) + 1;
+                const homeB = getCardHomeBranch(u);
+                if (homeB && homeB !== '—') {
+                    branchStats[homeB] = (branchStats[homeB] || 0) + 1;
                 }
             });
 
-            let branchHTML = '<h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Branch Performance (Cards Active at)</h3><div class="grid grid-cols-2 sm:grid-cols-4 gap-4">';
+            let branchHTML = '<h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Branch Performance (Home Branch Distribution)</h3><div class="grid grid-cols-2 sm:grid-cols-4 gap-4">';
             Object.entries(branchStats).sort((a,b) => b[1] - a[1]).forEach(([name, count]) => {
                 branchHTML += `
                     <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
@@ -429,7 +446,7 @@ function renderTable() {
     filtered.forEach(user => {
         const visits = parseInt(user.visits) || 0;
         const history = extractHistoryDetails(user.history);
-        const lastBranch = history.length ? history[0].branch : '—';
+        const homeBranch = getCardHomeBranch(user);
         const displayVisits = Math.min(visits, activeCampaign.totalVisits);
         const badgeClass = visits >= activeCampaign.totalVisits ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700';
         const isExpanded = expandedRows.has(user.id);
@@ -449,7 +466,7 @@ function renderTable() {
                 <span class="sm:hidden text-[10px] font-bold text-gray-400 uppercase">Visits</span>
                 <span class="${badgeClass} px-2.5 py-1 rounded-md text-xs font-black tracking-widest">${displayVisits}/${activeCampaign.totalVisits}</span>
             </td>
-            <td class="p-4 sm:p-4 text-gray-600 block sm:table-cell flex justify-between items-center border-t border-gray-50 sm:border-none"><span class="sm:hidden text-[10px] font-bold text-gray-400 uppercase">Last Branch</span>${escapeHTML(lastBranch)}</td>
+            <td class="p-4 sm:p-4 text-gray-600 block sm:table-cell flex justify-between items-center border-t border-gray-50 sm:border-none"><span class="sm:hidden text-[10px] font-bold text-gray-400 uppercase">Home Branch</span><span class="inline-flex items-center gap-1">${escapeHTML(homeBranch)} <i class="fa-solid fa-lock text-[9px] text-gray-400"></i></span></td>
             <td class="p-4 sm:p-4 text-gray-600 block sm:table-cell flex justify-between items-center border-t border-gray-50 sm:border-none"><span class="sm:hidden text-[10px] font-bold text-gray-400 uppercase">Last Visit</span>${escapeHTML(formatDateTime(user.last_visit))}</td>
             <td class="p-4 sm:p-4 text-gray-400 sm:text-right block sm:table-cell flex justify-center border-t border-gray-50 sm:border-none cursor-pointer hover:bg-gray-50 rounded-b-2xl sm:rounded-none">
                 <span class="sm:hidden text-xs font-bold mr-2">History</span> <i class="fa-solid fa-chevron-${isExpanded ? 'up' : 'down'}"></i>

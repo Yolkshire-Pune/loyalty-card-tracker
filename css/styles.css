@@ -5,14 +5,14 @@ body { overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
 .fade-in { animation: fadeIn 0.3s ease-out; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
-/* --- Dialog transitions (M3 emphasized easing) --- */
-#dialog { transition: opacity 0.25s cubic-bezier(0.2, 0, 0, 1); opacity: 0; pointer-events: none; }
-#dialog .dialog-panel {
+/* --- Dialog & Modal transitions (M3 emphasized easing) --- */
+#dialog, #tnc-modal { transition: opacity 0.25s cubic-bezier(0.2, 0, 0, 1); opacity: 0; pointer-events: none; }
+#dialog .dialog-panel, #tnc-modal .dialog-panel {
     transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1), opacity 0.25s cubic-bezier(0.2, 0, 0, 1);
     transform: scale(0.92) translateY(8px); opacity: 0;
 }
-#dialog.dialog-open { opacity: 1; pointer-events: auto; }
-#dialog.dialog-open .dialog-panel { transform: scale(1) translateY(0); opacity: 1; }
+#dialog.dialog-open, #tnc-modal.dialog-open { opacity: 1; pointer-events: auto; }
+#dialog.dialog-open .dialog-panel, #tnc-modal.dialog-open .dialog-panel { transform: scale(1) translateY(0); opacity: 1; }
 
 /* --- Skeleton shimmer --- */
 @keyframes shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }

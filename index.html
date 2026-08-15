@@ -76,6 +76,22 @@
         </div>
     </div>
 
+    <!-- Terms & Conditions Modal -->
+    <div id="tnc-modal" class="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-4 hidden" onclick="closeTnCModal()">
+        <div class="dialog-panel bg-surface rounded-3xl p-6 yolk-shadow max-w-sm w-full text-left border border-gray-100 max-h-[85vh] overflow-y-auto" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center mb-4 pb-3 border-b border-gray-100">
+                <h3 class="text-base font-black text-primary flex items-center gap-2">
+                    <i class="fa-solid fa-shield-halved text-warning"></i> Terms & Conditions
+                </h3>
+                <button onclick="closeTnCModal()" class="w-8 h-8 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 flex items-center justify-center text-xs font-bold transition-colors" aria-label="Close Terms">✕</button>
+            </div>
+            <div id="tnc-content" class="text-xs text-onSurfaceVariant font-medium space-y-3 mb-6 leading-relaxed">
+                <!-- Dynamically populated based on active campaign -->
+            </div>
+            <button onclick="closeTnCModal()" class="btn-primary py-3 text-xs w-full">I Understand</button>
+        </div>
+    </div>
+
     <!-- Milestone Celebration Overlay -->
     <div id="milestone" class="fixed inset-0 z-50 flex flex-col items-center justify-center p-6 cursor-pointer" style="background: rgba(13, 106, 55, 0.95);">
         <div class="egg-shell mb-8">
