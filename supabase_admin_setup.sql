@@ -21,13 +21,16 @@
 -- Also turn OFF Authentication -> Providers -> Email -> "Enable sign ups", so
 -- nobody can self-register an account.
 -- ---------------------------------------------------------------------------
+-- One statement per admin. Copy a line, change the address and the name.
+-- Deliberately NOT a comma-separated VALUES list: deleting or adding an entry
+-- there leaves a trailing comma, and Postgres reports it as a confusing
+-- "syntax error at or near )" pointing at the line AFTER the mistake.
 INSERT INTO app_private.admin_users (user_id, email, display_name)
-SELECT u.id, u.email, v.display_name
-FROM (VALUES
-    ('you@yolkshire.com',     'Vaishali'),
-    ('manager@yolkshire.com', 'Store Manager')
-) AS v(email, display_name)
-JOIN auth.users u ON u.email = v.email
+SELECT id, email, 'Vaishali' FROM auth.users WHERE email = 'you@yolkshire.com'
+ON CONFLICT (user_id) DO UPDATE SET display_name = EXCLUDED.display_name;
+
+INSERT INTO app_private.admin_users (user_id, email, display_name)
+SELECT id, email, 'Store Manager' FROM auth.users WHERE email = 'manager@yolkshire.com'
 ON CONFLICT (user_id) DO UPDATE SET display_name = EXCLUDED.display_name;
 
 -- Check it took. Any address you listed that is missing here does not yet exist
@@ -43,13 +46,8 @@ SELECT email, display_name, created_at FROM app_private.admin_users ORDER BY ema
 -- vaishali@yolkshire.com shows as "Vaishali" anyway -- set these only when you
 -- want something different from that.
 -- ---------------------------------------------------------------------------
-UPDATE app_private.admin_users AS a
-SET display_name = v.display_name
-FROM (VALUES
-    ('you@yolkshire.com',     'Vaishali'),
-    ('manager@yolkshire.com', 'Store Manager')
-) AS v(email, display_name)
-WHERE a.email = v.email;
+UPDATE app_private.admin_users SET display_name = 'Vaishali'      WHERE email = 'you@yolkshire.com';
+UPDATE app_private.admin_users SET display_name = 'Store Manager' WHERE email = 'manager@yolkshire.com';
 
 SELECT email, display_name FROM app_private.admin_users ORDER BY email;
 
@@ -89,6 +87,8 @@ FROM (VALUES
     ('PYC',             '0000')
 ) AS v(branch, pin)
 WHERE s.branch = v.branch;
+-- If this errors with "syntax error at or near )", check for a trailing comma
+-- after the last branch above -- every row needs a comma EXCEPT the last.
 
 -- All eight updated_at values should be the current time.
 SELECT branch, active, updated_at FROM app_private.staff_pins ORDER BY branch;
