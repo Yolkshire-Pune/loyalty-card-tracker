@@ -27,9 +27,16 @@ done
 
 echo "==> Stubbing the Supabase environment"
 $PSQL <<'SQL'
+-- Supabase installs pgcrypto into an `extensions` schema, NOT into public.
+-- Any SECURITY DEFINER function with a pinned search_path that omits it cannot
+-- see crypt(), and 500s at runtime. Mirror that layout so the harness catches it.
+CREATE SCHEMA extensions;
+CREATE EXTENSION pgcrypto WITH SCHEMA extensions;
+
 CREATE ROLE anon NOLOGIN;
 CREATE ROLE authenticated NOLOGIN;
 CREATE ROLE service_role NOLOGIN;
+GRANT USAGE ON SCHEMA extensions TO anon, authenticated, service_role;
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 
 CREATE SCHEMA auth;

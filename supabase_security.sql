@@ -24,6 +24,12 @@
 --    PostgREST only exposes the `public` schema, so anything in `app_private`
 --    is unreachable over the API no matter what key the caller holds.
 -- ---------------------------------------------------------------------------
+-- Supabase's SQL editor quietly includes `extensions` in its search_path, but
+-- psql and migration tools do not. Set it explicitly so the bare crypt() and
+-- gen_salt() calls below resolve no matter how this file is run. A schema in
+-- search_path that does not exist is ignored, so this is safe either way.
+SET search_path = public, extensions;
+
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE SCHEMA IF NOT EXISTS app_private;
@@ -674,7 +680,12 @@ CREATE OR REPLACE FUNCTION public.card_record_visit(
 RETURNS json
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, app_private, pg_temp
+-- `extensions` is required: this is the only function that calls crypt(), and
+-- Supabase installs pgcrypto into the `extensions` schema, not `public`. A
+-- pinned search_path without it makes crypt() invisible and the function 500s.
+-- `public` is kept for a plain Postgres, where pgcrypto lands there instead.
+-- A schema in search_path that does not exist is ignored, so both are safe.
+SET search_path = public, app_private, extensions, pg_temp
 AS $fn$
 DECLARE
     v_id       text := upper(btrim(COALESCE(p_card_id, '')));

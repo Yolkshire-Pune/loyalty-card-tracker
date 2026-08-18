@@ -36,7 +36,13 @@ async function rpc(fn, params) {
         headers: SUPABASE_HEADERS,
         body: JSON.stringify(params)
     });
-    if (!res.ok) throw new Error(`${fn} failed: ${res.status}`);
+    if (!res.ok) {
+        // Log what the server actually said. Without this, a server-side fault
+        // is indistinguishable from the customer being offline.
+        const detail = await res.text().catch(() => '');
+        console.error(`${fn} failed: HTTP ${res.status}`, detail);
+        throw new Error(`${fn} failed: ${res.status}`);
+    }
     return res.json();
 }
 
