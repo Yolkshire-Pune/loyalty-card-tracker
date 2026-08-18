@@ -21,18 +21,37 @@
 -- Also turn OFF Authentication -> Providers -> Email -> "Enable sign ups", so
 -- nobody can self-register an account.
 -- ---------------------------------------------------------------------------
-INSERT INTO app_private.admin_users (user_id, email)
-SELECT id, email
-FROM auth.users
-WHERE email IN (
-    'you@yolkshire.com',
-    'manager@yolkshire.com'
-)
-ON CONFLICT (user_id) DO NOTHING;
+INSERT INTO app_private.admin_users (user_id, email, display_name)
+SELECT u.id, u.email, v.display_name
+FROM (VALUES
+    ('you@yolkshire.com',     'Vaishali'),
+    ('manager@yolkshire.com', 'Store Manager')
+) AS v(email, display_name)
+JOIN auth.users u ON u.email = v.email
+ON CONFLICT (user_id) DO UPDATE SET display_name = EXCLUDED.display_name;
 
 -- Check it took. Any address you listed that is missing here does not yet exist
 -- in Authentication -> Users -- the INSERT above skips those silently.
-SELECT email, created_at FROM app_private.admin_users ORDER BY email;
+SELECT email, display_name, created_at FROM app_private.admin_users ORDER BY email;
+
+
+-- ---------------------------------------------------------------------------
+-- 1b. SET OR CHANGE DISPLAY NAMES
+--
+-- This is what the dashboard greets them with ("Welcome, Vaishali"). Without
+-- it, the greeting falls back to the local part of the address, so
+-- vaishali@yolkshire.com shows as "Vaishali" anyway -- set these only when you
+-- want something different from that.
+-- ---------------------------------------------------------------------------
+UPDATE app_private.admin_users AS a
+SET display_name = v.display_name
+FROM (VALUES
+    ('you@yolkshire.com',     'Vaishali'),
+    ('manager@yolkshire.com', 'Store Manager')
+) AS v(email, display_name)
+WHERE a.email = v.email;
+
+SELECT email, display_name FROM app_private.admin_users ORDER BY email;
 
 
 -- ---------------------------------------------------------------------------

@@ -239,10 +239,12 @@ ON CONFLICT (branch) DO NOTHING;
 -- 3. Admin allowlist. Having a Supabase Auth account is not enough on its own.
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS app_private.admin_users (
-    user_id    uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-    email      text,
-    created_at timestamptz NOT NULL DEFAULT now()
+    user_id      uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    email        text,
+    display_name text,
+    created_at   timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE app_private.admin_users ADD COLUMN IF NOT EXISTS display_name text;
 ALTER TABLE app_private.admin_users ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON app_private.admin_users FROM PUBLIC, anon, authenticated;
 
@@ -260,6 +262,32 @@ $fn$;
 
 REVOKE ALL ON FUNCTION public.is_admin() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
+
+-- What the dashboard calls after sign-in: is this account an admin, and what
+-- should it call them? Returns only the caller's own row -- one signed-in admin
+-- cannot enumerate the others. Falls back to the local part of the email when
+-- no display name is set, so the greeting is never a raw address.
+CREATE OR REPLACE FUNCTION public.admin_me()
+RETURNS json
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = app_private, pg_temp
+AS $fn$
+    SELECT COALESCE(
+        (SELECT json_build_object(
+                    'is_admin', true,
+                    'display_name', COALESCE(NULLIF(btrim(a.display_name), ''),
+                                             initcap(split_part(a.email, '@', 1))),
+                    'email', a.email)
+         FROM app_private.admin_users a
+         WHERE a.user_id = auth.uid()),
+        json_build_object('is_admin', false)
+    );
+$fn$;
+
+REVOKE ALL ON FUNCTION public.admin_me() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.admin_me() TO authenticated;
 
 
 -- ---------------------------------------------------------------------------

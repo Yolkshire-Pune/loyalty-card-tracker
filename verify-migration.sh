@@ -207,6 +207,17 @@ BEGIN
     PERFORM set_config('test.uid', '', true);
     ASSERT NOT public.is_admin(), 'anonymous => not admin';
 
+    -- 13b. admin_me returns the caller's own row only, with a usable name.
+    PERFORM set_config('test.uid', v_admin::text, true);
+    ASSERT (public.admin_me() ->> 'is_admin')::boolean, 'admin_me: allowlisted => true';
+    ASSERT (public.admin_me() ->> 'display_name') = 'Admin',
+        'admin_me: falls back to the email local part, got ' || (public.admin_me() ->> 'display_name');
+    UPDATE app_private.admin_users SET display_name = 'Vaishali' WHERE user_id = v_admin;
+    ASSERT (public.admin_me() ->> 'display_name') = 'Vaishali', 'admin_me: uses display_name once set';
+    PERFORM set_config('test.uid', '', true);
+    ASSERT NOT (public.admin_me() ->> 'is_admin')::boolean, 'admin_me: anonymous => false';
+    ASSERT public.admin_me() ->> 'email' IS NULL, 'admin_me must leak nothing when not an admin';
+
     RAISE NOTICE 'ALL ASSERTIONS PASSED';
 END $test$;
 SQL

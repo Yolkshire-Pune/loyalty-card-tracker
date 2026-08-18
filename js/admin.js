@@ -180,15 +180,16 @@ async function login() {
 
         // Signing in is not the same as being an admin. Authorisation lives in
         // app_private.admin_users and is enforced by RLS; this only decides
-        // whether to show a useful message or an empty dashboard.
-        const adminRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/is_admin`, {
+        // whether to show a useful message or an empty dashboard. It also
+        // returns the caller's own display name for the greeting.
+        const meRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/admin_me`, {
             method: 'POST',
             headers: authHeaders(),
             body: '{}'
         });
-        const isAdmin = adminRes.ok && (await adminRes.json()) === true;
+        const me = meRes.ok ? await meRes.json() : null;
 
-        if (!isAdmin) {
+        if (!me || me.is_admin !== true) {
             clearSession();
             resetBtn();
             document.getElementById('adminPassword').value = '';
@@ -197,7 +198,7 @@ async function login() {
 
         resetBtn();
         document.getElementById('adminPassword').value = '';
-        openDashboard(body.user?.email || email);
+        openDashboard(me.display_name || email);
     } catch (err) {
         resetBtn();
         showLoginError('Could not reach the server. Check your connection.');
