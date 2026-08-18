@@ -1,21 +1,55 @@
 // --- CONSTANTS ---
 const SUPABASE_URL = "https://tslqynxiwlndudvwihby.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tI0VcfTlTJkpTsXJSKh36g_Pwt_qjTo";
-const PUBLIC_API_URL = `${SUPABASE_URL}/rest/v1/cards`;
-const PYC_API_URL = `${SUPABASE_URL}/rest/v1/cards`;
+// The publishable key can no longer touch the `cards` table directly — it may
+// only call the three RPCs below, each of which enforces its rules in Postgres.
+// See supabase_security.sql.
+const RPC_URL = `${SUPABASE_URL}/rest/v1/rpc`;
 const SUPABASE_HEADERS = {
     'apikey': SUPABASE_KEY,
     'Authorization': `Bearer ${SUPABASE_KEY}`,
-    'Content-Type': 'application/json',
-    'Prefer': 'return=representation'
+    'Content-Type': 'application/json'
 };
+
+// Every server error code the RPCs can return, mapped to a guest-facing message.
+const RPC_ERRORS = {
+    invalid_card: ["Card Not Recognised", "This card ID isn't valid. Please check the QR code on your card."],
+    wrong_campaign: ["Wrong Programme", "This card belongs to a different Yolkshire programme."],
+    rate_limited: ["Too Many Attempts", "Too many attempts from this device. Please wait a few minutes and try again."],
+    invalid_name: ["Invalid Name", "Please enter a valid name (2-50 letters, spaces or dots)."],
+    invalid_phone: ["Invalid Phone", "Please enter a valid mobile number."],
+    invalid_branch: ["Select Branch", "Please select a valid collection branch."],
+    invalid_member_id: ["Invalid Member ID", "Enter a valid PYC member ID, such as B-0251, S-0072, DM1234, or DM0067."],
+    already_registered: ["Card Already Active", "This card has already been activated. Refresh to see your stamps."],
+    phone_taken: ["Phone Exists", "Phone number already registered. Please try a different number."],
+    member_id_taken: ["Member ID Exists", "This PYC member ID is already registered. Please check the ID and try again."],
+    not_registered: ["Card Not Active", "This card hasn't been activated yet."],
+    no_branch: ["Branch Missing", "No home branch is registered for this card. Please contact manager."],
+    bad_pin: ["Invalid PIN", "You entered an incorrect Staff authorization PIN."],
+    daily_limit: ["Daily Limit", "Oops! Guest is allowed only one visit per day to collect a stamp."],
+    card_complete: ["Card Complete", "Guest has already completed this card."]
+};
+
+async function rpc(fn, params) {
+    const res = await fetch(`${RPC_URL}/${fn}`, {
+        method: 'POST',
+        headers: SUPABASE_HEADERS,
+        body: JSON.stringify(params)
+    });
+    if (!res.ok) throw new Error(`${fn} failed: ${res.status}`);
+    return res.json();
+}
+
+function rpcErrorDialog(code) {
+    const [title, message] = RPC_ERRORS[code] || ["Something Went Wrong", "Please try again, or ask a manager for help."];
+    return showDialog(title, message);
+}
 const BUSINESS_WHATSAPP = '+918446536065';
 const INSTAGRAM_HANDLE = 'yolkshire';
 const BRAND_NAME = "Yolkshire's Golden Yolk Loyalty Program";
 const CAMPAIGNS = {
     public: {
         key: 'public',
-        apiUrl: PUBLIC_API_URL,
         totalVisits: 9,
         rewards: {
             3: 'Free Beverage',
@@ -28,7 +62,6 @@ const CAMPAIGNS = {
     },
     pyc: {
         key: 'pyc',
-        apiUrl: PYC_API_URL,
         totalVisits: 10,
         rewards: {
             5: 'Free Drink/Dessert',
@@ -83,7 +116,6 @@ const urlParams = new URLSearchParams(window.location.search);
 const cardId = urlParams.get('id');
 const campaignParam = String(urlParams.get('campaign') || 'public').toLowerCase();
 const activeCampaign = CAMPAIGNS[campaignParam] || CAMPAIGNS.public;
-const API_URL = activeCampaign.apiUrl;
 let currentUser = null;
 let registering = false;
 let visiting = false;
@@ -135,56 +167,15 @@ function validatePhone(isd, raw) {
     return { ok: true, digits };
 }
 
-function findPhoneCodeFromDigits(digits) {
-    return Object.keys(PHONE_RULES)
-        .sort((a, b) => b.length - a.length)
-        .find(code => digits.startsWith(code.replace(/\D/g, ''))) || '';
-}
-
 function canonicalPhoneFromParts(isd, digits) {
     const code = String(isd || '').trim();
     const cleanDigits = String(digits || '').replace(/\D/g, '');
     return code && cleanDigits ? code + cleanDigits : '';
 }
 
-function canonicalPhoneFromStored(stored) {
-    const digits = String(stored || '').replace(/\D/g, '');
-    if (!digits) return '';
-
-    const code = findPhoneCodeFromDigits(digits);
-    if (!code) return '';
-
-    const codeDigits = code.replace(/\D/g, '');
-    const nationalDigits = digits.slice(codeDigits.length);
-    return canonicalPhoneFromParts(code, nationalDigits);
-}
-
-function hasRegisteredPhone(row) {
-    return Boolean(
-        row &&
-        String(row.phone || '').trim() &&
-        String(row.name || '').trim()
-    );
-}
-
-function phoneAlreadyRegistered(rows, canonicalPhone, currentCardId) {
-    return (Array.isArray(rows) ? rows : []).some(row =>
-        hasRegisteredPhone(row) &&
-        String(row.id || '').trim() !== String(currentCardId || '').trim() &&
-        canonicalPhoneFromStored(row.phone) === canonicalPhone
-    );
-}
-
 function normalizeMemberId(raw) {
     const value = String(raw || '').trim().toUpperCase();
     return /^[A-Z]-\d{4}$/.test(value) || /^DM\d{4}$/.test(value) ? value : null;
-}
-
-function memberIdAlreadyRegistered(rows, memberId, currentCardId) {
-    return (Array.isArray(rows) ? rows : []).some(row =>
-        String(row.member_id || '').trim().toUpperCase() === memberId &&
-        String(row.id || '').trim() !== String(currentCardId || '').trim()
-    );
 }
 
 function splitPhone(stored) {
@@ -291,6 +282,9 @@ function getLatestStampDate(user) {
 }
 
 function hasStampedToday(user) {
+    // card_lookup / card_record_visit compute this in Asia/Kolkata server-side.
+    // The local derivation below is only a fallback for stale in-memory state.
+    if (user && typeof user.stamped_today === 'boolean') return user.stamped_today;
     const visits = parseInt(user?.visits) || 0;
     if (visits <= 0) return false;
     const todayKey = getKolkataDateKey(new Date());
@@ -697,28 +691,20 @@ function getVisitSuccessMessage(visits) {
 
 async function init() {
     if (!cardId) return render('home');
-    if (!API_URL) return showError("Database API URL is not configured yet.");
     try {
-        const res = await fetch(`${API_URL}?id=eq.${encodeURIComponent(cardId)}`, {
-            headers: SUPABASE_HEADERS
+        // Returns exactly this one card, with the phone masked. The blank row is
+        // created server-side on a card's first scan.
+        const result = await rpc('card_lookup', {
+            p_card_id: cardId,
+            p_campaign: activeCampaign.key
         });
-        const data = await res.json();
-        if (!Array.isArray(data) || data.length === 0) {
-            // Auto-create initial blank record if card ID is scanned for the first time
-            const newPayload = { id: cardId, name: '', phone: '', visits: 0, last_visit: '', history: '', member_id: '', campaign: activeCampaign.key };
-            try {
-                await fetch(API_URL, {
-                    method: 'POST',
-                    headers: SUPABASE_HEADERS,
-                    body: JSON.stringify(newPayload)
-                });
-            } catch (e) {
-                console.warn("Card row creation skipped or already exists:", e);
-            }
-            currentUser = newPayload;
-        } else {
-            currentUser = data[0];
+
+        if (!result || result.ok !== true) {
+            const [title, message] = RPC_ERRORS[result?.error] || ["Card Unavailable", "We couldn't load this card. Please try again shortly."];
+            return showError(`${title}: ${message}`);
         }
+
+        currentUser = result.card;
 
         // Self-healing: normalize old records in-memory
         normalizeUserRecord(currentUser);
@@ -1023,7 +1009,7 @@ function render(view = 'default') {
                     ${ProfileStat("Card ID", escapeHTML(currentUser.id))}
                     ${memberStat}
                     ${ProfileStat("Home Branch", escapeHTML(homeBranch || '—') + " 🔒")}
-                    ${ProfileStat("Phone", escapeHTML(formatPhone(currentUser.phone)))}
+                    ${ProfileStat("Phone", escapeHTML(currentUser.phone_display || ""))}
                     ${ProfileStat("Join Date", getJoinDate(currentUser))}
                     ${ProfileStat(isCardComplete ? "Completed Date" : "Last Visit", escapeHTML(getLastVisitLabel(currentUser)))}
                 </div>
@@ -1031,7 +1017,7 @@ function render(view = 'default') {
                 <div class="grid grid-cols-2 gap-x-5 gap-y-2.5 text-left w-full">
                     ${ProfileStat("Card ID", escapeHTML(currentUser.id))}
                     ${ProfileStat("Home Branch", escapeHTML(homeBranch || '—') + " 🔒")}
-                    ${ProfileStat("Phone", escapeHTML(formatPhone(currentUser.phone)))}
+                    ${ProfileStat("Phone", escapeHTML(currentUser.phone_display || ""))}
                     ${ProfileStat("Join Date", getJoinDate(currentUser))}
                     ${ProfileStat(isCardComplete ? "Completed Date" : "Last Visit", escapeHTML(getLastVisitLabel(currentUser)))}
                 </div>
@@ -1231,19 +1217,9 @@ async function handleRegistration() {
         registering = true;
         if (btn) { btn.disabled = true; btn.innerHTML = "Sending OTP..."; }
         try {
-            // First check if phone number already exists to avoid sending unnecessary SMS
-            const res = await fetch(`${API_URL}?select=*`, { headers: SUPABASE_HEADERS });
-            const globalUsers = await res.json();
-
-            if (phoneAlreadyRegistered(globalUsers, fullPhone, cardId)) {
-                resetButton();
-                return showDialog("Phone Exists", "Phone number already registered. Please try a different number.");
-            }
-
-            if (activeCampaign.requiresMemberId && memberIdAlreadyRegistered(globalUsers, memberId, cardId)) {
-                resetButton();
-                return showDialog("Member ID Exists", "This PYC member ID is already registered. Please check the ID and try again.");
-            }
+            // Duplicate phone / member ID are rejected by card_register once the
+            // OTP is confirmed. There is no client-side pre-check any more: it
+            // required downloading every customer record to the browser.
 
             // Setup invisible recaptcha
             if (!window.recaptchaVerifier) {
@@ -1340,39 +1316,24 @@ async function handleRegistration() {
     if (btn) { btn.disabled = true; btn.innerHTML = "Activating..."; }
 
     try {
-        const res = await fetch(`${API_URL}?select=*`, { headers: SUPABASE_HEADERS });
-        const globalUsers = await res.json();
-
-        if (phoneAlreadyRegistered(globalUsers, fullPhone, cardId)) {
-            resetButton();
-            return showDialog("Phone Exists", "Phone number already registered. Please try a different number.");
-        }
-
-        if (activeCampaign.requiresMemberId && memberIdAlreadyRegistered(globalUsers, memberId, cardId)) {
-            resetButton();
-            return showDialog("Member ID Exists", "This PYC member ID is already registered. Please check the ID and try again.");
-        }
-
-        const todayStr = new Date().toISOString();
-        const payload = { 
-            name, 
-            phone: fullPhone, 
-            branch: branchName,
-            visits: 0, 
-            last_visit: todayStr, 
-            history: `${todayStr}@${branchName}`, 
-            campaign: activeCampaign.key 
-        };
-        if (activeCampaign.requiresMemberId) payload.member_id = memberId;
-
-        // Upsert record into Supabase
-        await fetch(`${API_URL}?id=eq.${encodeURIComponent(cardId)}`, {
-            method: 'PATCH',
-            headers: SUPABASE_HEADERS,
-            body: JSON.stringify(payload)
+        // Duplicate phone, duplicate member ID, name/phone format, branch
+        // validity and "already activated" are all decided in Postgres. The
+        // checks above are only there to fail fast for the guest.
+        const result = await rpc('card_register', {
+            p_card_id: cardId,
+            p_campaign: activeCampaign.key,
+            p_name: name,
+            p_phone: fullPhone,
+            p_branch: branchName,
+            p_member_id: activeCampaign.requiresMemberId ? memberId : null
         });
 
-        currentUser = { id: cardId, ...payload };
+        if (!result || result.ok !== true) {
+            resetButton();
+            return rpcErrorDialog(result?.error);
+        }
+
+        currentUser = result.card;
 
         if (ENABLE_WHATSAPP_VERIFICATION) {
             render('whatsapp_verify');
@@ -1392,82 +1353,75 @@ async function handleVisit(currentVisits) {
     if (btn) btn.disabled = true;
     const reenable = () => { visiting = false; if (btn) btn.disabled = false; };
 
-    const newVisitCount = currentVisits + 1;
-    const pin = document.getElementById('staffPin').value;
-    const homeBranch = getCardHomeBranch(currentUser);
-    const branchName = activeCampaign.fixedBranch || homeBranch;
+    const pinInput = document.getElementById('staffPin');
+    const pin = pinInput ? pinInput.value : '';
 
-    if (!branchName) {
+    // These three checks only let the guest fail fast. They carry no authority —
+    // card_record_visit re-decides all of them, and the PIN, in Postgres.
+    if (!activeCampaign.fixedBranch && !getCardHomeBranch(currentUser)) {
         reenable();
-        return showDialog("Branch Missing", "No home branch is registered for this card. Please contact manager.");
+        return rpcErrorDialog('no_branch');
+    }
+    if (ENABLE_DAILY_LIMIT_CHECK && hasStampedToday(currentUser)) {
+        reenable();
+        return rpcErrorDialog('daily_limit');
+    }
+    if (currentVisits >= activeCampaign.totalVisits) {
+        reenable();
+        return rpcErrorDialog('card_complete');
     }
 
-    if (pin !== "2010") {
+    let result;
+    try {
+        // The browser sends the card ID and the PIN, and nothing else. The new
+        // visit count, the branch and the timestamp are all derived server-side,
+        // so a guest cannot stamp their own card or jump to the reward.
+        result = await rpc('card_record_visit', {
+            p_card_id: currentUser.id,
+            p_campaign: activeCampaign.key,
+            p_staff_pin: pin
+        });
+    } catch (err) {
         reenable();
-        return showDialog("Invalid PIN", "You entered an incorrect Staff authorization PIN.");
-    }
-
-    if (ENABLE_DAILY_LIMIT_CHECK) {
-        if (hasStampedToday(currentUser)) {
-            reenable();
-            return showDialog("Daily Limit", "Oops! Guest is allowed only one visit per day to collect a stamp.");
+        return showDialog("Connection Failed", "Couldn't reach the server. Check the connection and try again.");
+    } finally {
+        // Clear the PIN whatever happened, so it never lingers on a guest's phone
+        if (pinInput) {
+            pinInput.value = '';
+            updatePinDots('');
         }
     }
 
-    if (currentVisits >= activeCampaign.totalVisits) {
+    if (!result || result.ok !== true) {
         reenable();
-        return showDialog("Card Complete", "Guest has already completed this card.");
+        rpcErrorDialog(result?.error);
+        // daily_limit and card_complete return the current card, so the UI can
+        // correct itself if it was showing stale state.
+        if (result?.card) {
+            currentUser = result.card;
+            normalizeUserRecord(currentUser);
+            render();
+        }
+        return;
     }
 
-    // Clear PIN input immediately so it doesn't linger
-    const pinInput = document.getElementById('staffPin');
-    if (pinInput) {
-        pinInput.value = '';
-        updatePinDots('');
-    }
+    currentUser = result.card;
+    normalizeUserRecord(currentUser);
+    const newVisitCount = currentUser.visits;
 
-    const now = new Date();
-    const nowIso = now.toISOString();
-    const logEntry = branchName ? nowIso + "@" + branchName : nowIso;
-    const updatedHistory = currentUser.history ? currentUser.history + "|" + logEntry : logEntry;
-
-    // Trigger API call in the background to Supabase
-    fetch(`${API_URL}?id=eq.${encodeURIComponent(currentUser.id)}`, {
-        method: 'PATCH',
-        headers: SUPABASE_HEADERS,
-        body: JSON.stringify({
-            branch: branchName,
-            visits: newVisitCount,
-            last_visit: nowIso,
-            history: updatedHistory
-        })
-    }).catch(err => {
-        console.error("Background sync failed:", err);
-    });
-
-    const isReward = isRewardVisit(newVisitCount);
-
-    if (isReward) {
+    if (isRewardVisit(newVisitCount)) {
         // Reward visit: show the full milestone celebration overlay, then re-render
         const rewardName = getRewardName(newVisitCount);
         const rewardIdx = getRewardIndex(newVisitCount);
-        currentUser.branch = branchName;
-        currentUser.visits = newVisitCount;
-        currentUser.last_visit = nowIso;
-        currentUser.history = updatedHistory;
         visiting = false;
         celebrateMilestone(rewardIdx, rewardName).then(() => render());
     } else {
         // Normal visit: show clean toast, wait 1.5s, then update UI
         ensureToastElement();
         showToast(`Stamp collected for Visit ${newVisitCount}!`);
-        
+
         setTimeout(() => {
             hideToast();
-            currentUser.branch = branchName;
-            currentUser.visits = newVisitCount;
-            currentUser.last_visit = nowIso;
-            currentUser.history = updatedHistory;
             visiting = false;
             render();
         }, 1500);

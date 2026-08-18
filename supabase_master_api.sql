@@ -2,6 +2,12 @@
 -- Yolkshire Loyalty Engine: Database Migration & Master Dashboard Views
 -- Run this script in the Supabase SQL Editor:
 -- https://supabase.com/dashboard/project/tslqynxiwlndudvwihby/sql
+--
+-- ORDER MATTERS: run supabase_security.sql FIRST. This file now assumes
+-- `cards.visits` is an integer, which that migration guarantees. Running this
+-- against the old text column fails on the `COALESCE(visits, 0)` below.
+-- supabase_security.sql also creates this same view, so re-running this file is
+-- only needed if you are changing the view definition itself.
 -- ============================================================================
 
 -- 1. Ensure `branch` column exists on `cards` table
@@ -39,7 +45,9 @@ WITH normalized_cards AS (
         campaign,
         name,
         phone,
-        COALESCE(NULLIF(regexp_replace(visits::text, '[^0-9]', '', 'g'), '')::integer, 0) AS visit_count,
+        -- `visits` is a real integer since supabase_security.sql; the old regexp
+        -- scrub is gone, and would now fail against an integer column.
+        COALESCE(visits, 0) AS visit_count,
         last_visit
     FROM public.cards
     WHERE name IS NOT NULL AND TRIM(name) != ''
@@ -57,4 +65,6 @@ GROUP BY branch, campaign
 ORDER BY branch ASC, campaign ASC;
 
 -- 5. Grant access permissions for the PostgREST API
-GRANT SELECT ON public.loyalty_branch_summary TO anon, authenticated, service_role;
+-- NOTE: `anon` is deliberately excluded. This feed aggregates customer data and
+-- is server-to-server only; supabase_security.sql revokes it if granted here.
+GRANT SELECT ON public.loyalty_branch_summary TO authenticated, service_role;

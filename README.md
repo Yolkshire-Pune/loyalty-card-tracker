@@ -23,9 +23,34 @@ Terms and Conditions are built directly into the web application:
 - Accessible via the "View Terms & Conditions" trigger on the Card Lookup and Registration pages.
 - Dynamic campaign support (Public 9-visit terms vs. PYC Gymkhana 10-visit terms).
 
+## Security Model
+
+The app is a static site, so **nothing enforced in the browser is enforced at all**. Every
+rule that matters lives in Postgres. Setup script: `supabase_security.sql`.
+
+- The publishable key in `js/app.js` has **no table access**. It may call exactly three
+  functions: `card_lookup`, `card_register`, `card_record_visit`.
+- A customer reaches exactly one card: the ID printed on the card in their hand. There is
+  no endpoint that returns more than one row to a customer.
+- Phone numbers are **masked server-side** (`+91 XXXXXX 3210`). The raw number never
+  reaches a customer's browser.
+- Stamping sends only the card ID and the staff PIN. The new visit count, the branch and
+  the timestamp are all derived in Postgres, so a customer cannot stamp their own card or
+  jump to a reward.
+- Staff PINs are **bcrypt-hashed, per branch**, and never leave the database. Brute force
+  is capped at 10 wrong guesses per IP and 5 per card per 15 minutes.
+- The admin dashboard requires a **Supabase Auth login** that also appears in the
+  `app_private.admin_users` allowlist. Removing an admin is a `DELETE` — no redeploy, no
+  shared secret to rotate.
+
+Run `bash verify-migration.sh` (needs Docker) to prove these properties against a
+throwaway Postgres before applying the migration to production.
+
 ## Master Dashboard Feed API
 
-The loyalty engine exposes real-time and aggregated data feeds for external Master Dashboards (e.g., Viva Foods BI):
+The loyalty engine exposes aggregated data feeds for external Master Dashboards
+(e.g., Viva Foods BI). **These require the `service_role` key** and must be called from a
+server, never from a browser:
 - **Aggregated Branch KPI Feed**: `GET https://tslqynxiwlndudvwihby.supabase.co/rest/v1/loyalty_branch_summary`
 - **Transactional Ledger Feed**: `GET https://tslqynxiwlndudvwihby.supabase.co/rest/v1/cards?select=*`
 - Database schema setup script is located in `supabase_master_api.sql`.

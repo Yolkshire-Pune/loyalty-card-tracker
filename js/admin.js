@@ -1,17 +1,40 @@
 const SUPABASE_URL = "https://tslqynxiwlndudvwihby.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tI0VcfTlTJkpTsXJSKh36g_Pwt_qjTo";
-const PUBLIC_API_URL = `${SUPABASE_URL}/rest/v1/cards`;
-const PYC_API_URL = `${SUPABASE_URL}/rest/v1/cards`;
-const SUPABASE_HEADERS = {
-    'apikey': SUPABASE_KEY,
-    'Authorization': `Bearer ${SUPABASE_KEY}`,
-    'Content-Type': 'application/json'
-};
+const CARDS_URL = `${SUPABASE_URL}/rest/v1/cards`;
+const AUTH_URL = `${SUPABASE_URL}/auth/v1`;
+
+// The publishable key alone reads nothing: RLS on `cards` requires a signed-in
+// user who also appears in app_private.admin_users. See supabase_security.sql.
+//
+// The token lives in memory only -- not localStorage, not sessionStorage. This
+// dashboard gets opened on shared devices, and closing or refreshing the tab
+// should end the session, which is what the old logout button already did.
+let accessToken = null;
+
+function authHeaders() {
+    return {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${accessToken || SUPABASE_KEY}`,
+        'Content-Type': 'application/json'
+    };
+}
+
+function clearSession() {
+    accessToken = null;
+}
+
+function logout() {
+    // Best effort: revoke the refresh token server-side, then drop it locally.
+    if (accessToken) {
+        fetch(`${AUTH_URL}/logout`, { method: 'POST', headers: authHeaders() }).catch(() => {});
+    }
+    clearSession();
+    location.reload();
+}
 
 const CAMPAIGNS = {
     public: {
         key: 'public',
-        apiUrl: PUBLIC_API_URL,
         title: 'Loyalty Records',
         totalVisits: 9,
         rewards: {
@@ -24,7 +47,6 @@ const CAMPAIGNS = {
     },
     pyc: {
         key: 'pyc',
-        apiUrl: PYC_API_URL,
         title: 'YolKlub Loyalty Records',
         totalVisits: 10,
         rewards: {
@@ -39,7 +61,6 @@ const CAMPAIGNS = {
 const urlParams = new URLSearchParams(window.location.search);
 const campaignParam = String(urlParams.get('campaign') || 'public').toLowerCase();
 const activeCampaign = CAMPAIGNS[campaignParam] || CAMPAIGNS.public;
-const API_URL = activeCampaign.apiUrl;
 
 let allData = [];
 let expandedRows = new Set();
@@ -107,23 +128,76 @@ function initAdminChrome() {
     if (initialRow) initialRow.colSpan = getTableColspan();
 }
 
-function login() {
-    const pin = document.getElementById('adminPin').value;
-    const name = document.getElementById('adminName').value.trim() || 'Admin';
-    if (pin === "2010") {
-        document.getElementById('welcome-msg').textContent = activeCampaign.key === 'pyc'
-            ? `Welcome, ${name} - PYC`
-            : `Welcome, ${name}`;
-        document.getElementById('login-screen').classList.add('hidden');
-        document.getElementById('dashboard-screen').classList.remove('hidden');
-        fetchData();
-    } else {
-        document.getElementById('login-error').classList.remove('hidden');
-        document.getElementById('adminPin').value = '';
+function showLoginError(msg) {
+    const el = document.getElementById('login-error');
+    el.textContent = msg;
+    el.classList.remove('hidden');
+}
+
+function openDashboard(label) {
+    document.getElementById('welcome-msg').textContent = activeCampaign.key === 'pyc'
+        ? `Welcome, ${label} - PYC`
+        : `Welcome, ${label}`;
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('dashboard-screen').classList.remove('hidden');
+    fetchData();
+}
+
+async function login() {
+    const email = document.getElementById('adminEmail').value.trim();
+    const password = document.getElementById('adminPassword').value;
+    const btn = document.getElementById('login-btn');
+
+    document.getElementById('login-error').classList.add('hidden');
+    if (!email || !password) return showLoginError('Enter your email and password.');
+
+    btn.disabled = true;
+    btn.textContent = 'Signing in...';
+    const resetBtn = () => { btn.disabled = false; btn.textContent = 'Access Dashboard'; };
+
+    try {
+        const res = await fetch(`${AUTH_URL}/token?grant_type=password`, {
+            method: 'POST',
+            headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+        const body = await res.json();
+
+        if (!res.ok || !body.access_token) {
+            resetBtn();
+            document.getElementById('adminPassword').value = '';
+            return showLoginError('Incorrect email or password.');
+        }
+
+        accessToken = body.access_token;
+
+        // Signing in is not the same as being an admin. Authorisation lives in
+        // app_private.admin_users and is enforced by RLS; this only decides
+        // whether to show a useful message or an empty dashboard.
+        const adminRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/is_admin`, {
+            method: 'POST',
+            headers: authHeaders(),
+            body: '{}'
+        });
+        const isAdmin = adminRes.ok && (await adminRes.json()) === true;
+
+        if (!isAdmin) {
+            clearSession();
+            resetBtn();
+            document.getElementById('adminPassword').value = '';
+            return showLoginError('This account is not authorised for the dashboard.');
+        }
+
+        resetBtn();
+        document.getElementById('adminPassword').value = '';
+        openDashboard(body.user?.email || email);
+    } catch (err) {
+        resetBtn();
+        showLoginError('Could not reach the server. Check your connection.');
     }
 }
 
-document.getElementById('adminPin').addEventListener('keypress', function (e) { if (e.key === 'Enter') login(); });
+document.getElementById('adminPassword').addEventListener('keypress', function (e) { if (e.key === 'Enter') login(); });
 
 function extractHistoryDate(entry) {
     return String(entry || '').split('@')[0];
@@ -172,17 +246,34 @@ function formatDateTime(value) {
     }).replace(/\b(am|pm)\b/i, m => m.toLowerCase());
 }
 
+function tableMessage(msg) {
+    document.getElementById('tableBody').innerHTML =
+        `<tr><td colspan="${getTableColspan()}" class="p-8 text-center text-red-500 font-bold">${escapeHTML(msg)}</td></tr>`;
+}
+
 async function fetchData() {
-    if (!API_URL) {
-        document.getElementById('tableBody').innerHTML = `<tr><td colspan="${getTableColspan()}" class="p-8 text-center text-red-500 font-bold">PYC SheetDB API URL is not configured yet.</td></tr>`;
-        renderBranchChips();
+    if (!accessToken) {
+        tableMessage('Session expired. Please sign in again.');
         return;
     }
 
     try {
         const campaignFilter = activeCampaign.key === 'pyc' ? '?campaign=eq.pyc' : '?campaign=eq.public';
-        const res = await fetch(`${API_URL}${campaignFilter}`, { headers: SUPABASE_HEADERS });
+        const res = await fetch(`${CARDS_URL}${campaignFilter}`, { headers: authHeaders() });
+
+        // The access token expires (1h by default). Fail closed rather than
+        // silently showing an empty dashboard.
+        if (res.status === 401 || res.status === 403) {
+            clearSession();
+            tableMessage('Session expired. Please sign in again.');
+            return;
+        }
+
         const data = await res.json();
+        if (!Array.isArray(data)) {
+            tableMessage('Failed to load data.');
+            return;
+        }
         allData = data.filter(row => row.id && row.id.trim() !== "");
         
         // Preserve and ensure home branch is assigned from registration or history
@@ -210,7 +301,7 @@ async function fetchData() {
         renderBranchChips();
         renderTable();
     } catch (err) {
-        document.getElementById('tableBody').innerHTML = `<tr><td colspan="${getTableColspan()}" class="p-8 text-center text-red-500 font-bold">Failed to load data.</td></tr>`;
+        tableMessage('Failed to load data.');
     }
 }
 
@@ -549,6 +640,7 @@ function renderTable() {
 initAdminChrome();
 
 window.login = login;
+window.logout = logout;
 window.renderTable = renderTable;
 window.toggleCustomDateRange = toggleCustomDateRange;
 window.toggleRow = toggleRow;
