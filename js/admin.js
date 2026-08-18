@@ -1,3 +1,10 @@
+// Clickjacking guard. CSP frame-ancestors is the proper fix, but it is ignored
+// in a <meta> tag and GitHub Pages cannot set headers -- so bust out of any
+// frame before the dashboard, or an admin's session, can be rendered inside one.
+if (window.self !== window.top) {
+    window.top.location = window.self.location;
+}
+
 const SUPABASE_URL = "https://tslqynxiwlndudvwihby.supabase.co";
 const SUPABASE_KEY = "sb_publishable_tI0VcfTlTJkpTsXJSKh36g_Pwt_qjTo";
 const CARDS_URL = `${SUPABASE_URL}/rest/v1/cards`;

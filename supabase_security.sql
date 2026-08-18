@@ -224,8 +224,8 @@ REVOKE ALL ON app_private.staff_pins FROM PUBLIC, anon, authenticated;
 
 -- Seeded with the CURRENT pin so nothing breaks the moment you deploy.
 -- >>> THAT PIN IS ALREADY PUBLIC: it was hardcoded in js/app.js and is in git
--- >>> history. Rotate every branch using section 10.2 as soon as the new build
--- >>> is live.
+-- >>> history. Rotate every branch via supabase_admin_setup.sql as soon as the
+-- >>> new build is live.
 INSERT INTO app_private.staff_pins (branch, pin_hash)
 SELECT b, crypt('2010', gen_salt('bf', 10))
 FROM unnest(ARRAY[
@@ -867,31 +867,20 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLI
 -- 10. MANUAL STEPS -- the migration is not finished until these are done
 -- ============================================================================
 --
--- 10.1 CREATE THE ADMIN LOGIN
---      a) Supabase Dashboard -> Authentication -> Users -> "Add user".
---         Use a real address you control and a long random password.
---      b) Dashboard -> Authentication -> Providers -> Email:
---         turn OFF "Enable sign ups". Otherwise anyone can create an account
---         (they still would not be an admin, but there is no reason to allow it).
---      c) Add that user to the allowlist:
+-- 10.1 ADMIN LOGINS AND STAFF PINS  ->  see supabase_admin_setup.sql
 --
---          INSERT INTO app_private.admin_users (user_id, email)
---          SELECT id, email FROM auth.users WHERE email = 'you@yolkshire.com'
---          ON CONFLICT (user_id) DO NOTHING;
+--      That file holds runnable SQL for adding/removing admins and rotating
+--      staff PINs. It is a separate file on purpose: SQL kept inside comment
+--      markers gets copied along with the markers, and Postgres then receives
+--      nothing but comments ("syntax error at end of input" at LINE 0).
 --
---      Repeat (a) and (c) per admin. Removing an admin is a DELETE from
---      app_private.admin_users -- no redeploy, no shared secret to rotate.
+--      Two things there are not optional:
+--        * Add at least one admin, or the dashboard is unreachable.
+--        * Rotate every staff PIN. This script seeds '2010' so stamping keeps
+--          working the moment you deploy, but that PIN was hardcoded in
+--          js/app.js and is in git history -- treat it as public.
 --
--- 10.2 ROTATE THE STAFF PINS  <<< DO THIS, "2010" IS PUBLIC >>>
---      Give each branch its own PIN so a leak is scoped and revocable:
---
---          UPDATE app_private.staff_pins
---          SET pin_hash = crypt('7431', gen_salt('bf', 10)), updated_at = now()
---          WHERE branch = 'Kothrud';
---
---      ...once per branch, each with a different 4-digit PIN. The plaintext is
---      never stored; brute force is capped at 10 wrong guesses per IP and 5 per
---      card per 15 minutes, then a 30 minute block.
+--      Also turn OFF Authentication -> Providers -> Email -> "Enable sign ups".
 --
 -- 10.3 VERIFY THE LOCKDOWN
 --      With PUBLISHABLE_KEY set to the key in js/app.js, all three of these

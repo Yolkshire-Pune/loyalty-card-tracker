@@ -15,8 +15,10 @@
         img-src 'self' data:;
         connect-src 'self' https://tslqynxiwlndudvwihby.supabase.co;
         base-uri 'none';
-        form-action 'none';
-        frame-ancestors 'none'">
+        form-action 'none'">
+    <!-- No frame-ancestors here: browsers ignore it in a <meta> tag, and GitHub
+         Pages cannot set response headers. admin.js frame-busts instead. Moving
+         to a host that sets headers would let this be enforced properly. -->
     <title>Yolkshire Admin Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"

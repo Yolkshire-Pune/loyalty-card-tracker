@@ -67,8 +67,11 @@ const CAMPAIGNS = {
         title: BRAND_NAME,
         cardArt: {
             front: 'assets/yolkshire-loyalty-card-front.png',
-            back: 'assets/yolkshire-loyalty-card-back.png'
-        }
+            back: 'assets/yolkshire-loyalty-card-back.png',
+            portrait: false          // 3.5 x 2 in
+        },
+        idExample: 'YSLC001',
+        idLength: 7
     },
     pyc: {
         key: 'pyc',
@@ -82,8 +85,11 @@ const CAMPAIGNS = {
         title: "YolKlub Loyalty Program",
         cardArt: {
             front: 'assets/yolkshire-pyc-loyalty-card-front.png',
-            back: 'assets/yolkshire-pyc-loyalty-card-back.png'
-        }
+            back: 'assets/yolkshire-pyc-loyalty-card-back.png',
+            portrait: true           // 2 x 3.5 in
+        },
+        idExample: 'PYCLC001',
+        idLength: 8
     }
 };
 // [min, max] digit length (mobile) per ISD code
@@ -766,6 +772,10 @@ function render(view = 'default') {
                     <i class="fa-solid fa-chevron-right text-gray-300 group-hover:text-primary transition-colors"></i>
                 </button>
             </div>
+
+            <button type="button" onclick="openTnCModal()" class="text-xs text-primary font-bold hover:underline inline-flex items-center gap-1.5 mx-auto mt-8">
+                <i class="fa-solid fa-shield-halved text-warning"></i> View Terms & Conditions
+            </button>
         `;
     }
     // --- VIEW: CUSTOMER ENTRY ---
@@ -778,7 +788,7 @@ function render(view = 'default') {
             <h2 class="text-xl font-bold text-gray-800 mb-2 tracking-tight">Find Your Card</h2>
             
             <!-- 3D flipping card animation -->
-            <div class="card-scene">
+            <div class="card-scene${activeCampaign.cardArt.portrait ? ' card-scene--portrait' : ''}">
                 <div class="card-container">
                     <div class="card-face card-front">
                         <img src="${escapeHTML(activeCampaign.cardArt.front)}" alt="${escapeHTML(activeCampaign.title)} card, front" class="card-img" loading="lazy">
@@ -792,11 +802,11 @@ function render(view = 'default') {
             <p class="text-sm text-gray-600 mb-6 font-medium leading-relaxed text-left">
                 To view your loyalty card, simply scan the QR code on your physical card using your phone's camera.
                 <br><br>
-                Alternatively, enter the 7-character ID printed below your QR code here:
+                Alternatively, enter the ${activeCampaign.idLength}-character ID printed below your QR code here:
             </p>
 
             <div class="flex gap-2 mb-6">
-                <input type="text" id="manualCardId" placeholder="e.g., YSLC001" onkeydown="if(event.key==='Enter') handleManualId()" class="flex-1 border border-outline rounded-xl px-4 py-3.5 font-bold text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary uppercase transition-all">
+                <input type="text" id="manualCardId" placeholder="e.g., ${escapeHTML(activeCampaign.idExample)}" onkeydown="if(event.key==='Enter') handleManualId()" class="flex-1 border border-outline rounded-xl px-4 py-3.5 font-bold text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary uppercase transition-all">
                 <button onclick="handleManualId()" class="bg-primary text-white rounded-xl px-6 font-bold uppercase tracking-wider active:scale-95 transition-transform"><i class="fa-solid fa-arrow-right"></i></button>
             </div>
 
