@@ -151,8 +151,15 @@ END $mig$;
 -- retype: `visit_count` no longer needs the regexp scrub because `visits` is a
 -- real integer, and `latest_activity_at` is now a timestamptz (ISO 8601 with
 -- offset) rather than whatever text happened to be stored.
-DROP VIEW IF EXISTS public.loyalty_branch_summary;
-CREATE VIEW public.loyalty_branch_summary AS
+-- CREATE OR REPLACE first, falling back to DROP + CREATE. On a re-run the
+-- replace succeeds and the view keeps its grants; only the first run, coming
+-- from the old text-typed definition, needs the drop (REPLACE cannot change a
+-- column's type). Dropping unconditionally would strip the service_role grant
+-- off the BI feed every time this file is re-run.
+DO $view$
+DECLARE
+    v_sql text := $def$
+CREATE OR REPLACE VIEW public.loyalty_branch_summary AS
 WITH normalized_cards AS (
     SELECT
         id,
@@ -175,7 +182,15 @@ SELECT
     MAX(last_visit) AS latest_activity_at
 FROM normalized_cards
 GROUP BY branch, campaign
-ORDER BY branch ASC, campaign ASC;
+ORDER BY branch ASC, campaign ASC
+$def$;
+BEGIN
+    EXECUTE v_sql;
+EXCEPTION WHEN others THEN
+    RAISE NOTICE 'Replacing loyalty_branch_summary in place failed (%); dropping and recreating.', SQLERRM;
+    DROP VIEW IF EXISTS public.loyalty_branch_summary;
+    EXECUTE v_sql;
+END $view$;
 
 UPDATE public.cards SET visits = 0 WHERE visits IS NULL;
 ALTER TABLE public.cards ALTER COLUMN visits SET DEFAULT 0;

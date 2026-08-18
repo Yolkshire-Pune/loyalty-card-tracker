@@ -64,7 +64,11 @@ const CAMPAIGNS = {
         },
         fixedBranch: null,
         requiresMemberId: false,
-        title: BRAND_NAME
+        title: BRAND_NAME,
+        cardArt: {
+            front: 'assets/yolkshire-loyalty-card-front.png',
+            back: 'assets/yolkshire-loyalty-card-back.png'
+        }
     },
     pyc: {
         key: 'pyc',
@@ -75,7 +79,11 @@ const CAMPAIGNS = {
         },
         fixedBranch: 'PYC',
         requiresMemberId: true,
-        title: "YolKlub Loyalty Program"
+        title: "YolKlub Loyalty Program",
+        cardArt: {
+            front: 'assets/yolkshire-pyc-loyalty-card-front.png',
+            back: 'assets/yolkshire-pyc-loyalty-card-back.png'
+        }
     }
 };
 // [min, max] digit length (mobile) per ISD code
@@ -773,10 +781,10 @@ function render(view = 'default') {
             <div class="card-scene">
                 <div class="card-container">
                     <div class="card-face card-front">
-                        <img src="assets/card-front.png" alt="Card Front" class="card-img" onerror="this.src='https://placehold.co/400x250/0d6a37/ffffff?text=Golden+Yolk+Card'">
+                        <img src="${escapeHTML(activeCampaign.cardArt.front)}" alt="${escapeHTML(activeCampaign.title)} card, front" class="card-img" loading="lazy">
                     </div>
                     <div class="card-face card-back">
-                        <img src="assets/card-back.png" alt="Card Back" class="card-img" onerror="this.src='https://placehold.co/400x250/fcc314/0d6a37?text=Scan+QR+to+Earn'">
+                        <img src="${escapeHTML(activeCampaign.cardArt.back)}" alt="${escapeHTML(activeCampaign.title)} card, back" class="card-img" loading="lazy">
                     </div>
                 </div>
             </div>
