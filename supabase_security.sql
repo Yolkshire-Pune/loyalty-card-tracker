@@ -406,10 +406,41 @@ $fn$;
 CREATE OR REPLACE FUNCTION app_private.card_id_ok(p_card_id text, p_campaign text)
 RETURNS boolean LANGUAGE sql IMMUTABLE AS $fn$
     SELECT CASE
-        WHEN p_campaign = 'pyc' THEN p_card_id ~ '^PYCLC[0-9]{3}$'
-        ELSE p_card_id ~ '^YSLC[0-9]{3}$'
+        WHEN p_campaign = 'pyc' THEN p_card_id ~ '^PYCLC[0-9]+$'
+        ELSE p_card_id ~ '^YSLC[0-9]+$'
     END;
 $fn$;
+
+-- Strips leading zeros and normalises to the canonical stored form.
+-- Rule: strip prefix -> remove leading zeros -> pad to minimum 3 digits if < 1000.
+-- YSLC9 -> YSLC009, YSLC0009 -> YSLC009, YSLC1001 -> YSLC1001, YSLC123456 -> YSLC123456.
+CREATE OR REPLACE FUNCTION app_private.canonical_card_id(p_card_id text)
+RETURNS text LANGUAGE plpgsql IMMUTABLE AS $fn$
+DECLARE
+    v_clean   text := upper(btrim(COALESCE(p_card_id, '')));
+    v_prefix  text;
+    v_num_str text;
+BEGIN
+    IF v_clean ~ '^PYCLC[0-9]+$' THEN
+        v_prefix  := 'PYCLC';
+        v_num_str := regexp_replace(substr(v_clean, 6), '^0+', '');
+    ELSIF v_clean ~ '^YSLC[0-9]+$' THEN
+        v_prefix  := 'YSLC';
+        v_num_str := regexp_replace(substr(v_clean, 5), '^0+', '');
+    ELSE
+        RETURN v_clean;   -- not a known prefix -> pass through; card_id_ok will reject it
+    END IF;
+
+    -- Guard against a pure-zero input like YSLC000
+    IF v_num_str = '' THEN v_num_str := '0'; END IF;
+
+    -- Preserve existing 3-digit cards; 4+ digits stay as-is
+    IF length(v_num_str) < 3 THEN
+        v_num_str := lpad(v_num_str, 3, '0');
+    END IF;
+
+    RETURN v_prefix || v_num_str;
+END $fn$;
 
 CREATE OR REPLACE FUNCTION app_private.branch_ok(p_branch text)
 RETURNS boolean LANGUAGE sql IMMUTABLE AS $fn$
@@ -567,7 +598,7 @@ SECURITY DEFINER
 SET search_path = public, app_private, pg_temp
 AS $fn$
 DECLARE
-    v_id   text := upper(btrim(COALESCE(p_card_id, '')));
+    v_id   text := app_private.canonical_card_id(upper(btrim(COALESCE(p_card_id, ''))));
     v_camp text := lower(btrim(COALESCE(p_campaign, 'public')));
     v_card public.cards;
 BEGIN
@@ -620,7 +651,7 @@ SECURITY DEFINER
 SET search_path = public, app_private, pg_temp
 AS $fn$
 DECLARE
-    v_id      text := upper(btrim(COALESCE(p_card_id, '')));
+    v_id      text := app_private.canonical_card_id(upper(btrim(COALESCE(p_card_id, ''))));
     v_camp    text := lower(btrim(COALESCE(p_campaign, 'public')));
     v_name    text := btrim(regexp_replace(COALESCE(p_name, ''), '\s+', ' ', 'g'));
     v_phone   text := btrim(COALESCE(p_phone, ''));
@@ -731,7 +762,7 @@ SECURITY DEFINER
 SET search_path = public, app_private, extensions, pg_temp
 AS $fn$
 DECLARE
-    v_id       text := upper(btrim(COALESCE(p_card_id, '')));
+    v_id       text := app_private.canonical_card_id(upper(btrim(COALESCE(p_card_id, ''))));
     v_camp     text := lower(btrim(COALESCE(p_campaign, 'public')));
     v_pin      text := btrim(COALESCE(p_staff_pin, ''));
     v_ip       text := app_private.request_ip();

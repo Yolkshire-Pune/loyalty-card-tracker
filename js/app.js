@@ -802,7 +802,7 @@ function render(view = 'default') {
             <p class="text-sm text-gray-600 mb-6 font-medium leading-relaxed text-left">
                 To view your loyalty card, simply scan the QR code on your physical card using your phone's camera.
                 <br><br>
-                Alternatively, enter the ${activeCampaign.idLength}-character ID printed below your QR code here:
+                Alternatively, enter the card ID printed below your QR code here:
             </p>
 
             <div class="flex gap-2 mb-6">
@@ -821,7 +821,7 @@ function render(view = 'default') {
             <div class="p-6">
                 <p class="text-sm font-semibold text-primary mb-6">${escapeHTML(activeCampaign.title)}</p>
                 <p class="text-xs uppercase tracking-[0.2em] text-onSurfaceVariant font-semibold mb-3">Scan Detected</p>
-                <h1 class="text-2xl font-bold text-primary mb-12">#${escapeHTML(cardId)}</h1>
+                <h1 class="text-2xl font-bold text-primary mb-12">#${escapeHTML(currentUser?.id || cardId)}</h1>
                 ${PrimaryButton("Activate Card", "render('register')")}
             </div>`;
     }
@@ -946,7 +946,8 @@ function render(view = 'default') {
     // --- VIEW: WHATSAPP VERIFY ---
     else if (view === 'whatsapp_verify') {
         const name = currentUser ? currentUser.name : '';
-        const waMessage = `Hello Yolkshire, please verify my loyalty card #${cardId}. My registered name is ${name}.`;
+        const cid = currentUser?.id || cardId;
+        const waMessage = `Hello Yolkshire, please verify my loyalty card #${cid}. My registered name is ${name}.`;
         const waUrl = `https://wa.me/${BUSINESS_WHATSAPP.replace(/\D/g, '')}?text=${encodeURIComponent(waMessage)}`;
         
         container.innerHTML = `

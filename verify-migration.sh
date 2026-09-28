@@ -183,8 +183,8 @@ BEGIN
     -- 11. Registration validates, and refuses a duplicate phone.
     v_res := public.card_register('YSLC003', 'public', 'Meera Joshi', '+919000000001', 'Aundh', NULL);
     ASSERT (v_res ->> 'ok')::boolean, 'valid registration should succeed: ' || v_res::text;
-    ASSERT (public.card_register('YSLC778', 'public', 'Copycat', '+919000000001', 'Aundh', NULL) ->> 'error')
-        IS NOT DISTINCT FROM 'invalid_card', 'unknown card cannot register';
+    ASSERT (public.card_register('YSLCINVALID', 'public', 'Copycat', '+919000000001', 'Aundh', NULL) ->> 'error')
+        IS NOT DISTINCT FROM 'invalid_card', 'non-numeric card ID must be rejected';
 
     PERFORM public.card_lookup('YSLC779', 'public');
     ASSERT (public.card_register('YSLC779', 'public', 'Copycat', '+919000000001', 'Aundh', NULL) ->> 'error')
@@ -217,6 +217,62 @@ BEGIN
     PERFORM set_config('test.uid', '', true);
     ASSERT NOT (public.admin_me() ->> 'is_admin')::boolean, 'admin_me: anonymous => false';
     ASSERT public.admin_me() ->> 'email' IS NULL, 'admin_me must leak nothing when not an admin';
+
+    -- 14. Card ID canonicalization: leading-zero variants resolve to the same row.
+
+    -- 14a. Canonical form is unchanged
+    ASSERT app_private.canonical_card_id('YSLC001') = 'YSLC001',
+        'canonical_card_id: YSLC001 should stay YSLC001';
+
+    -- 14b. Extra leading zeros are stripped to canonical 3-digit form
+    ASSERT app_private.canonical_card_id('YSLC0001') = 'YSLC001',
+        'canonical_card_id: YSLC0001 should become YSLC001';
+    ASSERT app_private.canonical_card_id('YSLC00009') = 'YSLC009',
+        'canonical_card_id: YSLC00009 should become YSLC009';
+
+    -- 14c. Short forms are padded to 3 digits
+    ASSERT app_private.canonical_card_id('YSLC9') = 'YSLC009',
+        'canonical_card_id: YSLC9 should pad to YSLC009';
+    ASSERT app_private.canonical_card_id('YSLC09') = 'YSLC009',
+        'canonical_card_id: YSLC09 should pad to YSLC009';
+
+    -- 14d. 4+ digit numbers are never truncated or padded
+    ASSERT app_private.canonical_card_id('YSLC1000') = 'YSLC1000',
+        'canonical_card_id: YSLC1000 stays YSLC1000';
+    ASSERT app_private.canonical_card_id('YSLC01001') = 'YSLC1001',
+        'canonical_card_id: YSLC01001 should become YSLC1001';
+    ASSERT app_private.canonical_card_id('YSLC123456') = 'YSLC123456',
+        'canonical_card_id: YSLC123456 stays unchanged';
+
+    -- 14e. PYC campaign normalizes identically
+    ASSERT app_private.canonical_card_id('PYCLC007') = 'PYCLC007',
+        'canonical_card_id: PYCLC007 stays PYCLC007';
+    ASSERT app_private.canonical_card_id('PYCLC0007') = 'PYCLC007',
+        'canonical_card_id: PYCLC0007 becomes PYCLC007';
+
+    -- 14f. Lookup via zero-padded variant finds the existing YSLC001 row
+    v_res := public.card_lookup('YSLC0001', 'public');
+    ASSERT (v_res ->> 'ok')::boolean,
+        'card_lookup with extra leading zero must find existing card: ' || v_res::text;
+    ASSERT (v_res -> 'card' ->> 'id') = 'YSLC001',
+        'canonical id in response must be YSLC001, got: ' || (v_res -> 'card' ->> 'id');
+
+    -- 14g. Lookup via short form also finds the same row
+    v_res := public.card_lookup('YSLC1', 'public');
+    ASSERT (v_res ->> 'ok')::boolean,
+        'card_lookup with YSLC1 must find/create YSLC001 row: ' || v_res::text;
+    ASSERT (v_res -> 'card' ->> 'id') = 'YSLC001',
+        'canonical id must be YSLC001, got: ' || (v_res -> 'card' ->> 'id');
+
+    -- 14h. card_id_ok now accepts any digit count (post-canonicalization)
+    ASSERT app_private.card_id_ok('YSLC1234', 'public'),
+        'card_id_ok: YSLC1234 should now be valid';
+    ASSERT app_private.card_id_ok('YSLC123456', 'public'),
+        'card_id_ok: YSLC123456 should now be valid';
+    ASSERT NOT app_private.card_id_ok('YSLC', 'public'),
+        'card_id_ok: YSLC (no digits) must still be invalid';
+    ASSERT NOT app_private.card_id_ok('DROP TABLE', 'public'),
+        'card_id_ok: SQL injection attempt still rejected';
 
     RAISE NOTICE 'ALL ASSERTIONS PASSED';
 END $test$;
