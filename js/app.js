@@ -977,7 +977,6 @@ function render(view = 'default') {
         
         const nextVisitNumber = visits + 1;
         const isRewardEarned = !isCardComplete && isRewardVisit(nextVisitNumber);
-        const isNextReward = !isRewardEarned && !isCardComplete && isRewardVisit(nextVisitNumber + 1);
 
         const memberStat = activeCampaign.requiresMemberId
             ? ProfileStat("Member ID", escapeHTML(currentUser.member_id || '—'))
@@ -1076,12 +1075,15 @@ function render(view = 'default') {
                 <button onclick="render('history')" class="text-primary font-bold text-xs uppercase tracking-[0.2em] border-b-2 border-primary border-opacity-20 pb-1 mx-auto block">Visit History</button>
             `;
         } else {
-            const rewardCardClasses = isRewardEarned
+            const stampedToday = ENABLE_DAILY_LIMIT_CHECK && hasStampedToday(currentUser);
+            // The reward frame belongs to the visit that earns it, not the day of the stamp before.
+            const showRewardFrame = isRewardEarned && !stampedToday;
+            const rewardCardClasses = showRewardFrame
                 ? 'bg-gradient-to-br from-warning/25 to-warning/5 border-2 border-warning reward-glow'
                 : 'bg-surfaceVariant bg-opacity-30 border border-gray-100';
 
             const rewardName = getRewardName(nextVisitNumber);
-            const heroBanner = isRewardEarned ? `
+            const heroBanner = showRewardFrame ? `
                 <div class="mb-5 text-center">
                     <i class="fa-solid fa-gift gift-wiggle text-warning text-5xl mb-3"></i>
                     <h3 class="text-lg font-black text-primary tracking-tight leading-tight uppercase">YOU'VE EARNED<br>A ${rewardName}</h3>
@@ -1089,16 +1091,14 @@ function render(view = 'default') {
                 </div>
             ` : '';
 
-            const nextRewardName = getRewardName(nextVisitNumber + 1);
-            const nextRewardPill = isNextReward ? `
-                <div class="mb-4 py-1.5 px-3 bg-warning bg-opacity-10 text-primary text-[10px] font-black uppercase tracking-widest border border-warning border-opacity-20 rounded-lg text-center">${nextRewardName} on next visit</div>
-            ` : '';
-            
-            const stampedToday = ENABLE_DAILY_LIMIT_CHECK && hasStampedToday(currentUser);
+            // Once today's stamp is in, tell the guest if the very next stamp is a reward.
+            const nextVisitReward = stampedToday && isRewardEarned
+                ? ` ${rewardName} on next (${nextVisitNumber}${getVisitSuffix(nextVisitNumber)}) visit.`
+                : '';
             const dailyLimitBanner = stampedToday ? `
                 <div class="mb-4 py-2.5 px-3 bg-green-50 border border-green-200 text-green-800 rounded-xl text-xs font-bold flex items-center justify-center gap-2 text-center">
                     <i class="fa-solid fa-circle-check text-green-600 text-sm"></i>
-                    <span>Stamp collected for today! Next stamp available tomorrow.</span>
+                    <span>Stamp collected for today! Next stamp available tomorrow.${nextVisitReward}</span>
                 </div>
             ` : '';
 
@@ -1135,7 +1135,6 @@ function render(view = 'default') {
                         </div>
                         <input type="tel" inputmode="numeric" pattern="[0-9]*" maxlength="4" id="staffPin" oninput="updatePinDots(this.value)" autocomplete="off" class="absolute inset-0 w-full h-full opacity-0">
                     </div>
-                    ${nextRewardPill}
                     ${PrimaryButton(buttonLabel, "handleVisit(" + visits + ")")}
                 </div>
 
