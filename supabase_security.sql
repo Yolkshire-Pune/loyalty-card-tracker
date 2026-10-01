@@ -724,16 +724,13 @@ BEGIN
         RETURN json_build_object('ok', false, 'error', 'member_id_taken');
     END IF;
 
-    -- Activation is the customer's first visit: it marks stamp #1 (visits = 1)
-    -- and the history entry below is that stamp, so visits always equals the
-    -- number of history entries. Rewards then land on the 3rd/6th/9th visit.
     UPDATE public.cards
     SET name       = v_name,
         phone      = v_phone,
         branch     = v_branch,
         campaign   = v_camp,
         member_id  = v_member,
-        visits     = 1,
+        visits     = 0,
         last_visit = now(),
         history    = v_now || '@' || v_branch
     WHERE id = v_id

@@ -937,7 +937,7 @@ function render(view = 'default') {
             <div class="py-10">
                 <div class="w-16 h-16 bg-green-100 text-primary rounded-full flex items-center justify-center mx-auto mb-6 text-2xl">✓</div>
                 <h2 class="text-2xl font-bold text-gray-800 mb-2 tracking-tight">Welcome aboard!</h2>
-                <p class="text-sm text-gray-500 mb-3 font-medium">Your loyalty card #${escapeHTML(currentUser.id)} is now active, and your first stamp is already on it.</p>
+                <p class="text-sm text-gray-500 mb-3 font-medium">Your loyalty card #${escapeHTML(currentUser.id)} is now active.</p>
                 <p class="text-sm font-semibold text-primary mb-10">${escapeHTML(activeCampaign.title)}</p>
                 ${PrimaryButton("Go to Profile", "location.reload()")}
             </div>
